@@ -8,6 +8,6 @@ export async function bootstrap(): Promise<any> {
   const logger = new CustomLogger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
   
-  await app.listen(3000);
+  await app.listen(9393);
 }
 bootstrap();

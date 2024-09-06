@@ -1,0 +1,4 @@
+Starting ProcessController (e2e) stop process test
+Testing: should be able to stop a running process over api
+Attempting to stop process with id: 1bfe5e6f-1289-4a44-881a-294846a36a84
+Test failed: Expected status 200, got 201

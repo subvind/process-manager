@@ -1,5 +1,5 @@
 import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit } from '@nestjs/common';
-import { ProcessManagerService } from '../services/process-manager.service';
+import { ProcessManagerService } from 'src/services/process-manager.service';
 import { ScalingRule } from '../interfaces/scaling-rule.interface';
 
 @Controller('processes')
