@@ -18,49 +18,20 @@ Response body: {
     signalCode: null,
     exitCode: null,
     killed: false,
-    spawnfile: 'node',
-    _handle: { pid: 1435587 },
+    spawnfile: '/bin/sh',
+    _handle: { pid: 1439872 },
     spawnargs: [
-      'node',
-      '-e',
-      '"\n',
-      '',
-      '',
-      '',
-      "console.log('Long-running",
-      'process',
-      "started');\n",
-      '',
-      '',
-      '',
-      'let',
-      'counter',
-      '=',
-      '0;\n',
-      '',
-      '',
-      '',
-      'setInterval(()',
-      '=>',
-      '{\n',
-      '',
-      '',
-      '',
-      '',
-      '',
-      "console.log('Still",
-      'running...',
-      "Counter:',",
-      'counter++);\n',
-      '',
-      '',
-      '',
-      '},',
-      '1000);\n',
-      '',
-      '"'
+      '/bin/sh',
+      '-c',
+      'node -e "\n' +
+        "    console.log('Long-running process started');\n" +
+        '    let counter = 0;\n' +
+        '    setInterval(() => {\n' +
+        "      console.log('Still running... Counter:', counter++);\n" +
+        '    }, 1000);\n' +
+        '  "'
     ],
-    pid: 1435587,
+    pid: 1439872,
     stdin: null,
     stdout: {
       connecting: false,
@@ -98,17 +69,17 @@ Response body: {
     },
     stdio: [ null, [Object], [Object] ]
   },
-  pid: 1435587,
+  pid: 1439872,
   status: 'running',
   lastRestart: null,
-  id: '96fd9ab2-402c-4099-9776-9442e9d06e69',
+  id: 'f6713908-1ea4-4107-8274-cb4f80e418a8',
   restartAttempts: 0,
   cpu: 0,
   memory: 0,
   maxMemory: 1024,
-  createdAt: '2024-09-06T22:00:16.000Z',
-  updatedAt: '2024-09-06T22:00:16.000Z'
+  createdAt: '2024-09-06T22:06:49.000Z',
+  updatedAt: '2024-09-06T22:06:49.000Z'
 }
 Waiting for 10 seconds to ensure the process has started and is stable
 Verifying that the process is still running
-Test failed: Expected process status to be 'running', got 'stopped'
+Test passed successfully

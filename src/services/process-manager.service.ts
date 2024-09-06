@@ -109,9 +109,10 @@ export class ProcessManagerService implements OnModuleInit {
 
     const newProcess = this.processRepository.create(data);
     try {
-      const childProcess = spawn(data.command.split(' ')[0], data.command.split(' ').slice(1), {
+      const [command, ...args] = data.command.split(' ');
+      const childProcess = spawn(command, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
-        detached: true,
+        shell: true,
       });
       newProcess.process = childProcess;
       newProcess.pid = childProcess.pid;
@@ -172,9 +173,10 @@ export class ProcessManagerService implements OnModuleInit {
 
     while (retryCount < maxRetries && !success) {
       try {
-        const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+        const [command, ...args] = process.command.split(' ');
+        const childProcess = spawn(command, args, {
           stdio: ['ignore', 'pipe', 'pipe'],
-          detached: true,
+          shell: true,
         });
 
         process.process = childProcess;

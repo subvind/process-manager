@@ -33,16 +33,11 @@ export class ProcessManagerService implements OnModuleInit {
     for (const process of processes) {
       if (process.status === 'running') {
         try {
-          const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            detached: true,
-          });
-          process.process = childProcess;
-          process.pid = childProcess.pid;
-          this.setupProcessEventListeners(process);
+          await this.startProcess({ name: process.name, command: process.command });
         } catch (error) {
           this.logger.error(`Failed to restart persisted process ${process.name}: ${error.message}`);
           process.status = 'crashed';
+          await this.processRepository.save(process);
         }
       }
     }
@@ -67,6 +62,11 @@ export class ProcessManagerService implements OnModuleInit {
         await this.processRepository.save(process);
       } catch (error) {
         this.logger.error(`Failed to update metrics for process ${process.name}: ${error.message}`);
+        if (error.message.includes('No matching pid found')) {
+          process.status = 'crashed';
+          process.pid = undefined;
+          await this.processRepository.save(process);
+        }
       }
     }
   }
@@ -101,33 +101,46 @@ export class ProcessManagerService implements OnModuleInit {
   }
 
   async startProcess(data: { name: string; command: string }): Promise<Process> {
+    const existingProcess = await this.processRepository.findOne({ where: { name: data.name } });
+    if (existingProcess) {
+      this.logger.warn(`Process ${data.name} already exists. Stopping existing process before starting a new one.`);
+      await this.stopProcess(existingProcess.id);
+    }
+
     const newProcess = this.processRepository.create(data);
-    newProcess.startProcess(spawn);
-    return this.processRepository.save(newProcess);
+    try {
+      const childProcess = spawn(data.command.split(' ')[0], data.command.split(' ').slice(1), {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+      newProcess.process = childProcess;
+      newProcess.pid = childProcess.pid;
+      newProcess.status = 'running';
+      this.setupProcessEventListeners(newProcess);
+      return this.processRepository.save(newProcess);
+    } catch (error) {
+      this.logger.error(`Failed to start process ${data.name}: ${error.message}`);
+      newProcess.status = 'crashed';
+      return this.processRepository.save(newProcess);
+    }
   }
 
   async stopProcess(id: string): Promise<Process> {
-    const process = await this.processRepository.findOne({
-      where: {
-        id
-      }
-    });
-    if (process) {
-      process.stopProcess();
-      process.status = 'stopped';
-      process.pid = undefined;
-      await this.processRepository.save(process);
-      return process;
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
     }
-    throw new NotFoundException(`Process with id ${id} not found`);
+    if (process.status === 'running' && process.process) {
+      process.process.kill();
+    }
+    process.status = 'stopped';
+    process.pid = undefined;
+    process.process = undefined;
+    return this.processRepository.save(process);
   }
 
   async getProcessInfo(id: string) {
-    const process = await this.processRepository.findOne({ 
-      where: { 
-        id
-      } 
-    });
+    const process = await this.processRepository.findOne({ where: { id } });
     if (!process) {
       throw new NotFoundException(`Process with id ${id} not found`);
     }
@@ -144,11 +157,7 @@ export class ProcessManagerService implements OnModuleInit {
   }
 
   async restartProcess(id: string): Promise<Process> {
-    const process = await this.processRepository.findOne({
-      where: {
-        id
-      }
-    });
+    const process = await this.processRepository.findOne({ where: { id } });
     if (!process) {
       throw new NotFoundException(`Process with id ${id} not found`);
     }
@@ -208,6 +217,7 @@ export class ProcessManagerService implements OnModuleInit {
         process.status = 'stopped';
       }
       process.pid = undefined;
+      process.process = undefined;
       await this.processRepository.save(process);
 
       if (process.status === 'crashed') {
@@ -223,6 +233,14 @@ export class ProcessManagerService implements OnModuleInit {
           this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
         }
       }
+    });
+
+    process.process?.stdout?.on('data', (data) => {
+      this.logger.log(`[${process.name}] ${data.toString().trim()}`);
+    });
+
+    process.process?.stderr?.on('data', (data) => {
+      this.logger.error(`[${process.name}] ${data.toString().trim()}`);
     });
   }
 }
