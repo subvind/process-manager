@@ -18,7 +18,7 @@ Response body: {
     exitCode: null,
     killed: false,
     spawnfile: 'node',
-    _handle: { pid: 1137280 },
+    _handle: { pid: 1165582 },
     spawnargs: [
       'node',                '-e',
       '"\n',                 '',
@@ -35,7 +35,7 @@ Response body: {
       '},',                  '1000);\n',
       '',                    '"'
     ],
-    pid: 1137280,
+    pid: 1165582,
     stdin: null,
     stdout: {
       connecting: false,
@@ -73,16 +73,16 @@ Response body: {
     },
     stdio: [ null, [Object], [Object] ]
   },
-  pid: 1137280,
+  pid: 1165582,
   status: 'running',
   lastRestart: null,
-  id: '7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9',
+  id: 'e3a1fa7f-2f66-4290-be5e-f0d6a41b0ac0',
   restartAttempts: 0,
   cpu: 0,
   memory: 0,
   maxMemory: 1024,
-  createdAt: '2024-09-06T20:06:59.000Z',
-  updatedAt: '2024-09-06T20:06:59.000Z'
+  createdAt: '2024-09-06T21:00:22.000Z',
+  updatedAt: '2024-09-06T21:00:22.000Z'
 }
 Waiting for 2 seconds to ensure the process has started
 Verifying that the process is running

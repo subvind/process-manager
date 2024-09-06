@@ -1,0 +1,23 @@
+Starting ProcessController (e2e) info process test
+Testing: should be able to get info about a process over api
+Attempting to get info for process with id: 1bfe5e6f-1289-4a44-881a-294846a36a84
+Process info response: {
+  id: '1bfe5e6f-1289-4a44-881a-294846a36a84',
+  name: 'hello-world',
+  command: 'node -e "\n' +
+    "    console.log('Hello, World!');\n" +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running...');\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'stopped',
+  pid: 1129547,
+  restartAttempts: 0,
+  lastRestart: null,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T19:55:49.000Z',
+  updatedAt: '2024-09-06T19:59:24.000Z'
+}
+Test passed successfully

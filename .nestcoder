@@ -292,9 +292,13 @@ export class ProcessController {
   }
 
   @Post(':id/stop')
-  @HttpCode(200) // This decorator sets the status code to 200
-  stopProcess(@Param('id') id: string) {
-    return this.processManagerService.stopProcess(id);
+  @HttpCode(200)
+  async stopProcess(@Param('id') id: string) {
+    const stoppedProcess = await this.processManagerService.stopProcess(id);
+    if (stoppedProcess.status !== 'stopped') {
+      throw new InternalServerErrorException('Failed to stop the process');
+    }
+    return stoppedProcess;
   }
 
   @Get(':id')
@@ -422,7 +426,7 @@ export class ProcessManagerService implements OnModuleInit {
     return this.processRepository.save(newProcess);
   }
 
-  async stopProcess(id: string) {
+  async stopProcess(id: string): Promise<Process> {
     const process = await this.processRepository.findOne({
       where: {
         id
@@ -430,7 +434,10 @@ export class ProcessManagerService implements OnModuleInit {
     });
     if (process) {
       process.stopProcess();
-      return this.processRepository.save(process);
+      process.status = 'stopped';
+      process.pid = undefined;
+      await this.processRepository.save(process);
+      return process;
     }
     throw new NotFoundException(`Process with id ${id} not found`);
   }
@@ -504,6 +511,23 @@ export class ProcessManagerService implements OnModuleInit {
       }
     }, restartDelay);
   }
+}
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess, spawn } from 'child_process';
+
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
 }
 
 </FILE>
@@ -588,27 +612,174 @@ export class Process {
   stopProcess(): void {
     if (this.status === 'running' && this._process) {
       this._process.kill();
-      this.process = undefined;
+      this._process = undefined;
+      this.status = 'stopped';
+      this.pid = undefined;
     }
   }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
-import { ChildProcess, spawn } from 'child_process';
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+import { CustomLogger } from './logger/custom-logger';
 
-export interface Process {
-  id?: string;
-  name: string;
-  command: string;
-  status: 'running' | 'stopped' | 'crashed';
-  pid?: number;
-  process?: ChildProcess;
-  restartAttempts: number;
-  lastRestart?: Date;
-  cpu: number;
-  memory: number;
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [
+    ProcessManagerService,
+    CustomLogger
+  ]
+})
+export class AppModule {}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/info-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) info process test');
+
+  console.log('Testing: should be able to get info about a process over api');
+
+  try {
+    // First, get all processes
+    const listResponse = await request(API_URL).get('/processes');
+    
+    if (listResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${listResponse.status}`);
+    }
+
+    if (listResponse.body.length === 0) {
+      throw new Error('No processes found to get info');
+    }
+
+    const processToCheck = listResponse.body[0];
+
+    console.log(`Attempting to get info for process with id: ${processToCheck.id}`);
+
+    const infoResponse = await request(API_URL).get(`/processes/${processToCheck.id}`);
+
+    if (infoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${infoResponse.status}`);
+    }
+
+    console.log('Process info response:', infoResponse.body);
+
+    // Check if all expected fields are present
+    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
+    for (const field of expectedFields) {
+      if (!(field in infoResponse.body)) {
+        throw new Error(`Expected field '${field}' not found in process info`);
+      }
+    }
+
+    // Check if the returned info matches the process we queried
+    if (infoResponse.body.id !== processToCheck.id) {
+      throw new Error(`Returned process id ${infoResponse.body.id} does not match requested id ${processToCheck.id}`);
+    }
+
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
 }
 
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/start-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) tests');
+
+  console.log('Testing: should be able to start a hello world node.js process over api');
+  const helloWorldScript = `
+    console.log('Hello, World!');
+    setInterval(() => {
+      console.log('Still running...');
+    }, 1000);
+  `;
+
+  try {
+    const response = await request(API_URL)
+      .post('/processes')
+      .send({
+        name: 'hello-world',
+        command: `node -e "${helloWorldScript}"`,
+      });
+
+    if (response.status !== 201) {
+      throw new Error(`Expected status 201, got ${response.status}`);
+    }
+
+    console.log('Response body:', response.body);
+
+    if (!response.body.id) {
+      throw new Error('Response body should have an id property');
+    }
+
+    if (response.body.name !== 'hello-world') {
+      throw new Error(`Expected name to be 'hello-world', got '${response.body.name}'`);
+    }
+
+    if (response.body.status !== 'running') {
+      throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
+    }
+
+    console.log('Waiting for 2 seconds to ensure the process has started');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    console.log('Verifying that the process is running');
+    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
+    
+    if (processInfoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
+    }
+
+    const processInfo = processInfoResponse.body;
+    
+    if (processInfo.status !== 'running') {
+      throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
+    }
+
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
 import * as request from 'supertest';
@@ -679,6 +850,152 @@ runTests().catch(error => {
   process.exit(1);
 });
 </FILE>
+<FILE path="/home/travis/Projects/process-manager/test:info-process.stdout.txt">
+Starting ProcessController (e2e) info process test
+Testing: should be able to get info about a process over api
+Attempting to get info for process with id: 1bfe5e6f-1289-4a44-881a-294846a36a84
+Process info response: {
+  id: '1bfe5e6f-1289-4a44-881a-294846a36a84',
+  name: 'hello-world',
+  command: 'node -e "\n' +
+    "    console.log('Hello, World!');\n" +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running...');\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'stopped',
+  pid: 1129547,
+  restartAttempts: 0,
+  lastRestart: null,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T19:55:49.000Z',
+  updatedAt: '2024-09-06T19:59:24.000Z'
+}
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:start-process.stdout.txt">
+Starting ProcessController (e2e) tests
+Testing: should be able to start a hello world node.js process over api
+Response body: {
+  name: 'hello-world',
+  command: 'node -e "\n' +
+    "    console.log('Hello, World!');\n" +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running...');\n" +
+    '    }, 1000);\n' +
+    '  "',
+  _process: {
+    _events: {},
+    _eventsCount: 0,
+    _closesNeeded: 3,
+    _closesGot: 0,
+    connected: false,
+    signalCode: null,
+    exitCode: null,
+    killed: false,
+    spawnfile: 'node',
+    _handle: { pid: 1156401 },
+    spawnargs: [
+      'node',                '-e',
+      '"\n',                 '',
+      '',                    '',
+      "console.log('Hello,", "World!');\n",
+      '',                    '',
+      '',                    'setInterval(()',
+      '=>',                  '{\n',
+      '',                    '',
+      '',                    '',
+      '',                    "console.log('Still",
+      "running...');\n",     '',
+      '',                    '',
+      '},',                  '1000);\n',
+      '',                    '"'
+    ],
+    pid: 1156401,
+    stdin: null,
+    stdout: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 2,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stderr: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 2,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stdio: [ null, [Object], [Object] ]
+  },
+  pid: 1156401,
+  status: 'running',
+  lastRestart: null,
+  id: '6aae70f8-9436-4ccf-af57-dc79b9a11d1b',
+  restartAttempts: 0,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T20:45:57.000Z',
+  updatedAt: '2024-09-06T20:45:57.000Z'
+}
+Waiting for 2 seconds to ensure the process has started
+Verifying that the process is running
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
+Starting ProcessController (e2e) stop process test
+Testing: should be able to stop a running process over api
+Attempting to stop process with id: 7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9
+Stop process response: {
+  id: '7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9',
+  name: 'hello-world',
+  command: 'node -e "\n' +
+    "    console.log('Hello, World!');\n" +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running...');\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'stopped',
+  pid: null,
+  restartAttempts: 0,
+  lastRestart: null,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T20:06:59.000Z',
+  updatedAt: '2024-09-06T20:07:05.000Z'
+}
+Waiting for 2 seconds to ensure the process has stopped
+Verifying that the process is stopped
+Test passed successfully
+
+</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/logger/custom-logger.ts">
 import { ConsoleLogger, Injectable, Inject } from '@nestjs/common';
 import * as fs from 'fs';
@@ -748,39 +1065,6 @@ export class CustomLogger extends ConsoleLogger {
   }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProcessController } from './controllers/process.controller';
-import { ProcessManagerService } from './services/process-manager.service';
-import { Process } from './entities/process.entity';
-import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
-        entities: [Process, ScalingRule],
-        synchronize: true, // Be cautious with this in production
-      }),
-      inject: [ConfigService],
-    }),
-    TypeOrmModule.forFeature([Process, ScalingRule]),
-  ],
-  controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
-})
-export class AppModule {}
-</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/main.ts">
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -795,169 +1079,6 @@ export async function bootstrap(): Promise<any> {
   await app.listen(9393);
 }
 bootstrap();
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/start-process.test.ts">
-import * as request from 'supertest';
-import { ProcessManagerService } from '../src/services/process-manager.service';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) tests');
-
-  console.log('Testing: should be able to start a hello world node.js process over api');
-  const helloWorldScript = `
-    console.log('Hello, World!');
-    setInterval(() => {
-      console.log('Still running...');
-    }, 1000);
-  `;
-
-  try {
-    const response = await request(API_URL)
-      .post('/processes')
-      .send({
-        name: 'hello-world',
-        command: `node -e "${helloWorldScript}"`,
-      });
-
-    if (response.status !== 201) {
-      throw new Error(`Expected status 201, got ${response.status}`);
-    }
-
-    console.log('Response body:', response.body);
-
-    if (!response.body.id) {
-      throw new Error('Response body should have an id property');
-    }
-
-    if (response.body.name !== 'hello-world') {
-      throw new Error(`Expected name to be 'hello-world', got '${response.body.name}'`);
-    }
-
-    if (response.body.status !== 'running') {
-      throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
-    }
-
-    console.log('Waiting for 2 seconds to ensure the process has started');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    console.log('Verifying that the process is running');
-    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'running') {
-      throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:start-process.stdout.txt">
-Starting ProcessController (e2e) tests
-Testing: should be able to start a hello world node.js process over api
-Response body: {
-  name: 'hello-world',
-  command: 'node -e "\n' +
-    "    console.log('Hello, World!');\n" +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running...');\n" +
-    '    }, 1000);\n' +
-    '  "',
-  _process: {
-    _events: {},
-    _eventsCount: 0,
-    _closesNeeded: 3,
-    _closesGot: 0,
-    connected: false,
-    signalCode: null,
-    exitCode: null,
-    killed: false,
-    spawnfile: 'node',
-    _handle: { pid: 1132716 },
-    spawnargs: [
-      'node',                '-e',
-      '"\n',                 '',
-      '',                    '',
-      "console.log('Hello,", "World!');\n",
-      '',                    '',
-      '',                    'setInterval(()',
-      '=>',                  '{\n',
-      '',                    '',
-      '',                    '',
-      '',                    "console.log('Still",
-      "running...');\n",     '',
-      '',                    '',
-      '},',                  '1000);\n',
-      '',                    '"'
-    ],
-    pid: 1132716,
-    stdin: null,
-    stdout: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 2,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stderr: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 2,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stdio: [ null, [Object], [Object] ]
-  },
-  pid: 1132716,
-  status: 'running',
-  lastRestart: null,
-  id: 'a68ef4b3-0eae-4582-a080-468a4117037e',
-  restartAttempts: 0,
-  cpu: 0,
-  memory: 0,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T20:00:06.000Z',
-  updatedAt: '2024-09-06T20:00:06.000Z'
-}
-Waiting for 2 seconds to ensure the process has started
-Verifying that the process is running
-Test passed successfully
 
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/dist/controllers/process.controller.d.ts">
@@ -1011,71 +1132,9 @@ export declare class ProcessManagerService implements OnModuleInit {
 }
 
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/dist/entities/process.entity.d.ts">
-import { ChildProcess } from 'child_process';
-export declare class Process {
-    id: string;
-    name: string;
-    command: string;
-    status: 'running' | 'stopped' | 'crashed';
-    pid?: number;
-    restartAttempts: number;
-    lastRestart?: Date;
-    cpu: number;
-    memory: number;
-    maxMemory: number;
-    createdAt: Date;
-    updatedAt: Date;
-    private _process?;
-    get process(): ChildProcess | undefined;
-    set process(proc: ChildProcess | undefined);
-    startProcess(spawn: Function): void;
-    stopProcess(): void;
-}
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/dist/interfaces/process.interface.d.ts">
-import { ChildProcess } from 'child_process';
-export interface Process {
-    id?: string;
-    name: string;
-    command: string;
-    status: 'running' | 'stopped' | 'crashed';
-    pid?: number;
-    process?: ChildProcess;
-    restartAttempts: number;
-    lastRestart?: Date;
-    cpu: number;
-    memory: number;
-}
-
-</FILE>
-<FILE path="test:stop-process.stdout.txt" TARGET>
-Starting ProcessController (e2e) stop process test
-Testing: should be able to stop a running process over api
-Attempting to stop process with id: a68ef4b3-0eae-4582-a080-468a4117037e
-Stop process response: {
-  id: 'a68ef4b3-0eae-4582-a080-468a4117037e',
-  name: 'hello-world',
-  command: 'node -e "\n' +
-    "    console.log('Hello, World!');\n" +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running...');\n" +
-    '    }, 1000);\n' +
-    '  "',
-  status: 'running',
-  pid: 1132716,
-  restartAttempts: 0,
-  lastRestart: null,
-  cpu: 0,
-  memory: 0,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T20:00:06.000Z',
-  updatedAt: '2024-09-06T20:00:06.000Z'
-}
-Test failed: Expected status to be 'stopped', got 'running'
-
+<FILE path="test/list-process.test.ts" TARGET>
+(empty file)
 </FILE>
 <REQUEST>
-test is failing
+just like the other tests except it lists the processes
 </REQUEST>

@@ -1,5 +1,4 @@
 import * as request from 'supertest';
-import { ProcessManagerService } from '../src/services/process-manager.service';
 
 const API_URL = 'http://localhost:9393';
 
