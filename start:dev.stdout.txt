@@ -1,92 +1,20 @@
-c[[90m2:33:44 PM[0m] Starting compilation in watch mode...
+c[[90m3:07:38 PM[0m] Starting compilation in watch mode...
 
-[[90m2:33:45 PM[0m] Found 0 errors. Watching for file changes.
+[[90m3:07:39 PM[0m] Found 0 errors. Watching for file changes.
 
-[2024-09-06T19:33:45.823Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T19:33:45.832Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:33:45.832Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T19:33:45.833Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:33:45.833Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:33:45.852Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T19:33:45.852Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:33:45.852Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T19:33:45.855Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T19:33:45.856Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T19:33:45.857Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T19:33:45.857Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T19:33:45.857Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T19:33:45.857Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T19:33:45.857Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T19:33:45.862Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
-c[[90m2:46:01 PM[0m] File change detected. Starting incremental compilation...
-
-[[90m2:46:01 PM[0m] Found 0 errors. Watching for file changes.
-
-[2024-09-06T19:46:02.068Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T19:46:02.077Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:46:02.077Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T19:46:02.077Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:46:02.077Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:46:02.096Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T19:46:02.096Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:46:02.096Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T19:46:02.099Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T19:46:02.101Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T19:46:02.101Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T19:46:02.101Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T19:46:02.102Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T19:46:02.102Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T19:46:02.102Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T19:46:02.107Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
-c[[90m2:46:52 PM[0m] File change detected. Starting incremental compilation...
-
-[[90m2:46:52 PM[0m] Found 0 errors. Watching for file changes.
-
-[2024-09-06T19:46:53.242Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T19:46:53.249Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:46:53.249Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T19:46:53.249Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:46:53.249Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:46:53.263Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T19:46:53.263Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:46:53.263Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T19:46:53.265Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T19:46:53.267Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T19:46:53.267Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T19:46:53.267Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T19:46:53.267Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T19:46:53.267Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T19:46:53.268Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T19:46:53.271Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
-c[[90m2:53:55 PM[0m] File change detected. Starting incremental compilation...
-
-[[90m2:53:55 PM[0m] Found 0 errors. Watching for file changes.
-
-[2024-09-06T19:53:56.087Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T19:53:56.097Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:53:56.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T19:53:56.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:53:56.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T19:53:56.113Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T19:53:56.113Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T19:53:56.114Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T19:53:56.116Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T19:53:56.118Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T19:53:56.118Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T19:53:56.119Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T19:53:56.119Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T19:53:56.119Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T19:53:56.119Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T19:53:56.122Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
-[2024-09-06T19:55:56.196Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:06.199Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:16.206Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:26.207Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:36.215Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:46.218Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:56:56.219Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:57:06.225Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:57:16.235Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:57:26.235Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:57:36.245Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
-[2024-09-06T19:57:46.247Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:07:40.000Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T20:07:40.023Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T20:07:40.024Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T20:07:40.030Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started

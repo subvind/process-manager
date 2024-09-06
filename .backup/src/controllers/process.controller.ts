@@ -1,5 +1,5 @@
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit } from '@nestjs/common';
-import { ProcessManagerService } from 'src/services/process-manager.service';
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
+import { ProcessManagerService } from '../services/process-manager.service';
 import { ScalingRule } from '../interfaces/scaling-rule.interface';
 
 @Controller('processes')
@@ -17,6 +17,7 @@ export class ProcessController {
   }
 
   @Post(':id/stop')
+  @HttpCode(200) // This decorator sets the status code to 200
   stopProcess(@Param('id') id: string) {
     return this.processManagerService.stopProcess(id);
   }

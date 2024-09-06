@@ -1,4 +1,4 @@
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit } from '@nestjs/common';
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
 import { ProcessManagerService } from '../services/process-manager.service';
 import { ScalingRule } from '../interfaces/scaling-rule.interface';
 
@@ -17,8 +17,13 @@ export class ProcessController {
   }
 
   @Post(':id/stop')
-  stopProcess(@Param('id') id: string) {
-    return this.processManagerService.stopProcess(id);
+  @HttpCode(200)
+  async stopProcess(@Param('id') id: string) {
+    const stoppedProcess = await this.processManagerService.stopProcess(id);
+    if (stoppedProcess.status !== 'stopped') {
+      throw new InternalServerErrorException('Failed to stop the process');
+    }
+    return stoppedProcess;
   }
 
   @Get(':id')

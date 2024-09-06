@@ -78,7 +78,9 @@ export class Process {
   stopProcess(): void {
     if (this.status === 'running' && this._process) {
       this._process.kill();
-      this.process = undefined;
+      this._process = undefined;
+      this.status = 'stopped';
+      this.pid = undefined;
     }
   }
 }
