@@ -183,8 +183,8 @@ export class ProcessManagerService implements OnModuleInit {
         this.logger.error(`Failed to restart process ${process.name} (${process.id}) on attempt ${retryCount + 1}: ${error.message}`);
         retryCount++;
         if (retryCount < maxRetries) {
-          this.logger.log(`Retrying in 1 second...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          this.logger.log(`Retrying in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       }
     }
@@ -211,11 +211,16 @@ export class ProcessManagerService implements OnModuleInit {
       await this.processRepository.save(process);
 
       if (process.status === 'crashed') {
-        this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
-        try {
-          await this.restartProcess(process.id);
-        } catch (error) {
-          this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+        if (process.restartAttempts < 3) {
+          this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
+          try {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            await this.restartProcess(process.id);
+          } catch (error) {
+            this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+          }
+        } else {
+          this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
         }
       }
     });

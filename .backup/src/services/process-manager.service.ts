@@ -143,19 +143,6 @@ export class ProcessManagerService implements OnModuleInit {
     return this.scalingRuleRepository.find();
   }
 
-  private setupProcessEventListeners(process: ProcessInterface) {
-    process.process?.on('exit', async (code) => {
-      this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
-      process.status = 'stopped';
-      process.pid = undefined;
-      await this.processRepository.save(process);
-
-      if (process.status !== 'stopped') {
-        await this.restartProcess(process.id);
-      }
-    });
-  }
-
   async restartProcess(id: string): Promise<Process> {
     const process = await this.processRepository.findOne({
       where: {
@@ -166,23 +153,71 @@ export class ProcessManagerService implements OnModuleInit {
       throw new NotFoundException(`Process with id ${id} not found`);
     }
 
+    this.logger.log(`Attempting to restart process ${process.name} (${process.id})`);
+
     await this.stopProcess(id);
     
-    const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: true,
-    });
+    const maxRetries = 3;
+    let retryCount = 0;
+    let success = false;
 
-    process.process = childProcess;
-    process.pid = childProcess.pid;
-    process.status = 'running';
-    process.restartAttempts++;
-    process.lastRestart = new Date();
+    while (retryCount < maxRetries && !success) {
+      try {
+        const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          detached: true,
+        });
 
-    this.setupProcessEventListeners(process);
-    await this.processRepository.save(process);
+        process.process = childProcess;
+        process.pid = childProcess.pid;
+        process.status = 'running';
+        process.restartAttempts++;
+        process.lastRestart = new Date();
 
-    this.logger.log(`Process ${process.name} (${process.id}) restarted successfully.`);
+        this.setupProcessEventListeners(process);
+        await this.processRepository.save(process);
+
+        this.logger.log(`Process ${process.name} (${process.id}) restarted successfully on attempt ${retryCount + 1}.`);
+        success = true;
+      } catch (error) {
+        this.logger.error(`Failed to restart process ${process.name} (${process.id}) on attempt ${retryCount + 1}: ${error.message}`);
+        retryCount++;
+        if (retryCount < maxRetries) {
+          this.logger.log(`Retrying in 1 second...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+
+    if (!success) {
+      process.status = 'crashed';
+      await this.processRepository.save(process);
+      throw new Error(`Failed to restart process ${process.name} (${process.id}) after ${maxRetries} attempts`);
+    }
+
     return process;
+  }
+
+  private setupProcessEventListeners(process: ProcessInterface) {
+    process.process?.on('exit', async (code) => {
+      this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
+      if (code !== 0) {
+        this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
+        process.status = 'crashed';
+      } else {
+        process.status = 'stopped';
+      }
+      process.pid = undefined;
+      await this.processRepository.save(process);
+
+      if (process.status === 'crashed') {
+        this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
+        try {
+          await this.restartProcess(process.id);
+        } catch (error) {
+          this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+        }
+      }
+    });
   }
 }

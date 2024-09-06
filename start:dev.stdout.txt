@@ -1,21 +1,40 @@
-c[[90m4:31:51 PM[0m] Starting compilation in watch mode...
+c[[90m4:41:09 PM[0m] Starting compilation in watch mode...
 
-[[90m4:31:52 PM[0m] Found 0 errors. Watching for file changes.
+[[90m4:41:10 PM[0m] Found 0 errors. Watching for file changes.
 
-[2024-09-06T21:31:53.099Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T21:31:53.110Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T21:31:53.110Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T21:31:53.110Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T21:31:53.110Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T21:31:53.134Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T21:31:53.134Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T21:31:53.134Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T21:31:53.138Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T21:31:53.140Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T21:31:53.140Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T21:31:53.140Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T21:31:53.141Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T21:31:53.141Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T21:31:53.141Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T21:31:53.141Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
-[2024-09-06T21:31:53.147Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T21:41:11.165Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T21:41:11.175Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T21:41:11.175Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T21:41:11.175Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T21:41:11.175Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T21:41:11.193Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T21:41:11.193Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T21:41:11.193Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T21:41:11.196Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T21:41:11.197Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T21:41:11.198Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T21:41:11.198Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T21:41:11.198Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T21:41:11.198Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T21:41:11.198Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T21:41:11.199Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T21:41:11.208Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T21:41:11.230Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (cac917c7-03a1-4198-b8af-5b99654f5528) exited with code 1
+[2024-09-06T21:41:11.230Z] [ERROR] [Bootstrap] [ProcessManagerService] Process hello-world (cac917c7-03a1-4198-b8af-5b99654f5528) crashed with code 1
+[2024-09-06T21:41:11.241Z] [WARN] [Bootstrap] [ProcessManagerService] Process hello-world (cac917c7-03a1-4198-b8af-5b99654f5528) has crashed 302 times. Stopping automatic restarts.
+[2024-09-06T21:41:41.220Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:41:43.517Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-06T21:41:43.529Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) restarted successfully on attempt 1.
+[2024-09-06T21:41:43.547Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) exited with code 1
+[2024-09-06T21:41:43.547Z] [ERROR] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) crashed with code 1
+[2024-09-06T21:41:43.550Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart crashed process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-06T21:41:48.557Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-06T21:41:48.568Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) restarted successfully on attempt 1.
+[2024-09-06T21:41:48.589Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) exited with code 1
+[2024-09-06T21:41:48.589Z] [ERROR] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) crashed with code 1
+[2024-09-06T21:41:48.593Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart crashed process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-06T21:41:53.596Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-06T21:41:53.606Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) restarted successfully on attempt 1.
+[2024-09-06T21:41:53.626Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) exited with code 1
+[2024-09-06T21:41:53.626Z] [ERROR] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) crashed with code 1
+[2024-09-06T21:41:53.631Z] [WARN] [Bootstrap] [ProcessManagerService] Process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb) has crashed 3 times. Stopping automatic restarts.

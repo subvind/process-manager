@@ -125,17 +125,36 @@ Response body: [
       "      console.log('Still running...');\n" +
       '    }, 1000);\n' +
       '  "',
-    status: 'running',
-    pid: 1411894,
-    restartAttempts: 22662,
-    lastRestart: '2024-09-06T21:30:49.219Z',
+    status: 'stopped',
+    pid: 1413794,
+    restartAttempts: 22847,
+    lastRestart: '2024-09-06T21:30:54.610Z',
     cpu: 0,
     memory: 0,
     maxMemory: 1024,
     createdAt: '2024-09-06T21:19:52.000Z',
-    updatedAt: '2024-09-06T21:30:49.000Z'
+    updatedAt: '2024-09-06T21:30:54.000Z'
+  },
+  {
+    id: 'cac917c7-03a1-4198-b8af-5b99654f5528',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1418763,
+    restartAttempts: 302,
+    lastRestart: '2024-09-06T21:33:33.386Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:33:13.000Z',
+    updatedAt: '2024-09-06T21:41:11.000Z'
   }
 ]
-Successfully listed 7 processes
+Successfully listed 8 processes
 All processes have the expected fields
 Test passed successfully
