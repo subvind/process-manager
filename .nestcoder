@@ -514,23 +514,6 @@ export class ProcessManagerService implements OnModuleInit {
 }
 
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
-import { ChildProcess, spawn } from 'child_process';
-
-export interface Process {
-  id?: string;
-  name: string;
-  command: string;
-  status: 'running' | 'stopped' | 'crashed';
-  pid?: number;
-  process?: ChildProcess;
-  restartAttempts: number;
-  lastRestart?: Date;
-  cpu: number;
-  memory: number;
-}
-
-</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ChildProcess } from 'child_process';
@@ -619,38 +602,68 @@ export class Process {
   }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProcessController } from './controllers/process.controller';
-import { ProcessManagerService } from './services/process-manager.service';
-import { Process } from './entities/process.entity';
-import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess, spawn } from 'child_process';
 
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
-        entities: [Process, ScalingRule],
-        synchronize: true, // Be cautious with this in production
-      }),
-      inject: [ConfigService],
-    }),
-    TypeOrmModule.forFeature([Process, ScalingRule]),
-  ],
-  controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
-})
-export class AppModule {}
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
+}
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/list-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) list processes test');
+
+  console.log('Testing: should be able to list all processes over api');
+
+  try {
+    const response = await request(API_URL).get('/processes');
+
+    if (response.status !== 200) {
+      throw new Error(`Expected status 200, got ${response.status}`);
+    }
+
+    console.log('List processes response:', response.body);
+
+    if (!Array.isArray(response.body)) {
+      throw new Error('Response body should be an array');
+    }
+
+    // Check if each process in the list has the expected properties
+    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
+    for (const process of response.body) {
+      for (const field of expectedFields) {
+        if (!(field in process)) {
+          throw new Error(`Expected field '${field}' not found in process ${process.id}`);
+        }
+      }
+    }
+
+    console.log(`Successfully listed ${response.body.length} processes`);
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/test/info-process.test.ts">
 import * as request from 'supertest';
@@ -711,144 +724,8 @@ runTests().catch(error => {
   process.exit(1);
 });
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/test/start-process.test.ts">
-import * as request from 'supertest';
+<FILE path="/home/travis/Projects/process-manager/test:list-processes.stdout.txt">
 
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) tests');
-
-  console.log('Testing: should be able to start a hello world node.js process over api');
-  const helloWorldScript = `
-    console.log('Hello, World!');
-    setInterval(() => {
-      console.log('Still running...');
-    }, 1000);
-  `;
-
-  try {
-    const response = await request(API_URL)
-      .post('/processes')
-      .send({
-        name: 'hello-world',
-        command: `node -e "${helloWorldScript}"`,
-      });
-
-    if (response.status !== 201) {
-      throw new Error(`Expected status 201, got ${response.status}`);
-    }
-
-    console.log('Response body:', response.body);
-
-    if (!response.body.id) {
-      throw new Error('Response body should have an id property');
-    }
-
-    if (response.body.name !== 'hello-world') {
-      throw new Error(`Expected name to be 'hello-world', got '${response.body.name}'`);
-    }
-
-    if (response.body.status !== 'running') {
-      throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
-    }
-
-    console.log('Waiting for 2 seconds to ensure the process has started');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    console.log('Verifying that the process is running');
-    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'running') {
-      throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) stop process test');
-
-  console.log('Testing: should be able to stop a running process over api');
-
-  try {
-    // First, get all running processes
-    const listResponse = await request(API_URL).get('/processes');
-    
-    if (listResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${listResponse.status}`);
-    }
-
-    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
-
-    if (runningProcesses.length === 0) {
-      throw new Error('No running processes found to stop');
-    }
-
-    const processToStop = runningProcesses[0];
-
-    console.log(`Attempting to stop process with id: ${processToStop.id}`);
-
-    const stopResponse = await request(API_URL)
-      .post(`/processes/${processToStop.id}/stop`);
-
-    if (stopResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${stopResponse.status}`);
-    }
-
-    console.log('Stop process response:', stopResponse.body);
-
-    if (stopResponse.body.status !== 'stopped') {
-      throw new Error(`Expected status to be 'stopped', got '${stopResponse.body.status}'`);
-    }
-
-    console.log('Waiting for 2 seconds to ensure the process has stopped');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    console.log('Verifying that the process is stopped');
-    const processInfoResponse = await request(API_URL).get(`/processes/${processToStop.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'stopped') {
-      throw new Error(`Expected process status to be 'stopped', got '${processInfo.status}'`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/test:info-process.stdout.txt">
 Starting ProcessController (e2e) info process test
@@ -873,126 +750,6 @@ Process info response: {
   createdAt: '2024-09-06T19:55:49.000Z',
   updatedAt: '2024-09-06T19:59:24.000Z'
 }
-Test passed successfully
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:start-process.stdout.txt">
-Starting ProcessController (e2e) tests
-Testing: should be able to start a hello world node.js process over api
-Response body: {
-  name: 'hello-world',
-  command: 'node -e "\n' +
-    "    console.log('Hello, World!');\n" +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running...');\n" +
-    '    }, 1000);\n' +
-    '  "',
-  _process: {
-    _events: {},
-    _eventsCount: 0,
-    _closesNeeded: 3,
-    _closesGot: 0,
-    connected: false,
-    signalCode: null,
-    exitCode: null,
-    killed: false,
-    spawnfile: 'node',
-    _handle: { pid: 1156401 },
-    spawnargs: [
-      'node',                '-e',
-      '"\n',                 '',
-      '',                    '',
-      "console.log('Hello,", "World!');\n",
-      '',                    '',
-      '',                    'setInterval(()',
-      '=>',                  '{\n',
-      '',                    '',
-      '',                    '',
-      '',                    "console.log('Still",
-      "running...');\n",     '',
-      '',                    '',
-      '},',                  '1000);\n',
-      '',                    '"'
-    ],
-    pid: 1156401,
-    stdin: null,
-    stdout: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 2,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stderr: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 2,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stdio: [ null, [Object], [Object] ]
-  },
-  pid: 1156401,
-  status: 'running',
-  lastRestart: null,
-  id: '6aae70f8-9436-4ccf-af57-dc79b9a11d1b',
-  restartAttempts: 0,
-  cpu: 0,
-  memory: 0,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T20:45:57.000Z',
-  updatedAt: '2024-09-06T20:45:57.000Z'
-}
-Waiting for 2 seconds to ensure the process has started
-Verifying that the process is running
-Test passed successfully
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
-Starting ProcessController (e2e) stop process test
-Testing: should be able to stop a running process over api
-Attempting to stop process with id: 7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9
-Stop process response: {
-  id: '7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9',
-  name: 'hello-world',
-  command: 'node -e "\n' +
-    "    console.log('Hello, World!');\n" +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running...');\n" +
-    '    }, 1000);\n' +
-    '  "',
-  status: 'stopped',
-  pid: null,
-  restartAttempts: 0,
-  lastRestart: null,
-  cpu: 0,
-  memory: 0,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T20:06:59.000Z',
-  updatedAt: '2024-09-06T20:07:05.000Z'
-}
-Waiting for 2 seconds to ensure the process has stopped
-Verifying that the process is stopped
 Test passed successfully
 
 </FILE>
@@ -1065,6 +822,39 @@ export class CustomLogger extends ConsoleLogger {
   }
 }
 </FILE>
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+import { CustomLogger } from './logger/custom-logger';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [
+    ProcessManagerService,
+    CustomLogger
+  ]
+})
+export class AppModule {}
+</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/main.ts">
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -1081,60 +871,140 @@ export async function bootstrap(): Promise<any> {
 bootstrap();
 
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/dist/controllers/process.controller.d.ts">
-import { ProcessManagerService } from '../services/process-manager.service';
-import { ScalingRule } from '../interfaces/scaling-rule.interface';
-export declare class ProcessController {
-    private processManagerService;
-    constructor(processManagerService: ProcessManagerService);
-    listProcesses(): Promise<import("../entities/process.entity").Process[]>;
-    startProcess(data: {
-        name: string;
-        command: string;
-    }): Promise<import("../entities/process.entity").Process>;
-    stopProcess(id: string): Promise<import("../entities/process.entity").Process>;
-    getProcessInfo(id: string): Promise<import("../entities/process.entity").Process>;
-    addScalingRule(rule: ScalingRule): Promise<import("../entities/scaling-rule.entity").ScalingRule>;
-    getScalingRules(): Promise<import("../entities/scaling-rule.entity").ScalingRule[]>;
-}
+<FILE path="/home/travis/Projects/process-manager/start:dev.stdout.txt">
+c[[90m3:07:38 PM[0m] Starting compilation in watch mode...
+
+[[90m3:07:39 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T20:07:40.000Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T20:07:40.007Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T20:07:40.020Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T20:07:40.023Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T20:07:40.024Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T20:07:40.025Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T20:07:40.030Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T20:46:02.402Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:46:12.394Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:46:22.397Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:46:32.408Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:46:42.409Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:46:52.415Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:02.421Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:12.423Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:22.431Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:32.441Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:42.441Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:47:52.448Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:02.458Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:12.459Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:22.468Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:32.478Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:42.479Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:48:52.489Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:02.493Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:12.494Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:22.503Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:32.511Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:42.511Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:49:52.520Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:02.530Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:12.531Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:22.540Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:32.544Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:42.544Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:50:52.551Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:02.560Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:12.561Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:22.568Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:32.578Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:42.579Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:51:52.590Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:02.600Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:12.602Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:22.608Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:32.618Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:42.618Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:52:52.627Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:02.630Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:12.630Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:22.640Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:32.647Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:42.648Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:53:52.656Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:02.667Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:12.668Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:22.677Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:32.688Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:42.688Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:54:52.699Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:02.709Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:12.710Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:22.720Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:32.729Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:42.731Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:55:52.737Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:02.748Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:12.749Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:22.758Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:32.765Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:42.765Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:56:52.776Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:02.784Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:12.785Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:22.795Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:32.804Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:42.804Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:57:52.815Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:02.824Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:12.824Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:22.834Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:32.844Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:42.844Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:58:52.854Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:02.862Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:12.864Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:22.873Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:32.884Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:42.886Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T20:59:52.889Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:02.898Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:12.897Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:22.898Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:22.898Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:32.905Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:32.906Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:42.907Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:42.907Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:52.916Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:00:52.917Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:02.927Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:02.928Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:12.928Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:12.928Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:22.938Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:22.939Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:32.942Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:32.943Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:42.942Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:42.943Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:52.944Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:01:52.945Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:02:02.947Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:02:02.948Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
 
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/dist/services/process-manager.service.d.ts">
-import { OnModuleInit } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { Process } from '../entities/process.entity';
-import { ScalingRule } from '../entities/scaling-rule.entity';
-import { ConfigService } from '@nestjs/config';
-import { ScalingRule as ScalingRuleInterface } from '../interfaces/scaling-rule.interface';
-export declare class ProcessManagerService implements OnModuleInit {
-    private processRepository;
-    private scalingRuleRepository;
-    private configService;
-    private readonly logger;
-    constructor(processRepository: Repository<Process>, scalingRuleRepository: Repository<ScalingRule>, configService: ConfigService);
-    onModuleInit(): Promise<void>;
-    private loadPersistedProcesses;
-    private monitorAndScale;
-    private updateProcessMetrics;
-    private applyScalingRules;
-    private balanceLoad;
-    getProcesses(): Promise<Process[]>;
-    startProcess(data: {
-        name: string;
-        command: string;
-    }): Promise<Process>;
-    stopProcess(id: string): Promise<Process>;
-    getProcessInfo(id: string): Promise<Process>;
-    addScalingRule(rule: ScalingRuleInterface): Promise<ScalingRule>;
-    getScalingRules(): Promise<ScalingRule[]>;
-    private setupProcessEventListeners;
-    private restartProcess;
-}
-
-</FILE>
-<FILE path="test/list-process.test.ts" TARGET>
+<FILE path="test/list-processes.test.ts" TARGET>
 (empty file)
 </FILE>
 <REQUEST>
-just like the other tests except it lists the processes
+app is not listing any processes or anything in stdout
 </REQUEST>

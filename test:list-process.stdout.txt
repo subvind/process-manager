@@ -1,0 +1,103 @@
+Starting ProcessController (e2e) list processes test
+Testing: should be able to list all processes over api
+Response status: 200
+Response body: [
+  {
+    id: '1bfe5e6f-1289-4a44-881a-294846a36a84',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1129547,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T19:55:49.000Z',
+    updatedAt: '2024-09-06T19:59:24.000Z'
+  },
+  {
+    id: 'a68ef4b3-0eae-4582-a080-468a4117037e',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1132716,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:00:06.000Z',
+    updatedAt: '2024-09-06T20:05:12.000Z'
+  },
+  {
+    id: '7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1137280,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:06:59.000Z',
+    updatedAt: '2024-09-06T20:07:05.000Z'
+  },
+  {
+    id: '6aae70f8-9436-4ccf-af57-dc79b9a11d1b',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1156401,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:45:57.000Z',
+    updatedAt: '2024-09-06T21:05:17.000Z'
+  },
+  {
+    id: 'e3a1fa7f-2f66-4290-be5e-f0d6a41b0ac0',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1165582,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:00:22.000Z',
+    updatedAt: '2024-09-06T21:05:24.000Z'
+  }
+]
+Successfully listed 5 processes
+All processes have the expected fields
+Test passed successfully

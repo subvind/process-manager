@@ -10,15 +10,18 @@ async function runTests() {
   try {
     const response = await request(API_URL).get('/processes');
 
+    console.log('Response status:', response.status);
+    console.log('Response body:', response.body);
+
     if (response.status !== 200) {
       throw new Error(`Expected status 200, got ${response.status}`);
     }
 
-    console.log('List processes response:', response.body);
-
     if (!Array.isArray(response.body)) {
       throw new Error('Response body should be an array');
     }
+
+    console.log(`Successfully listed ${response.body.length} processes`);
 
     // Check if each process in the list has the expected properties
     const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
@@ -30,10 +33,13 @@ async function runTests() {
       }
     }
 
-    console.log(`Successfully listed ${response.body.length} processes`);
+    console.log('All processes have the expected fields');
     console.log('Test passed successfully');
   } catch (error) {
     console.error('Test failed:', error.message);
+    if (error.response) {
+      console.error('Error response:', error.response.body);
+    }
     process.exit(1);
   }
 }
