@@ -1,4 +1,4 @@
-import { ChildProcess } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 
 export interface Process {
   id?: string;
@@ -11,6 +11,4 @@ export interface Process {
   lastRestart?: Date;
   cpu: number;
   memory: number;
-  kill: (signal: NodeJS.Signals) => void;
-  on: (event: string, listener: (...args: any[]) => void) => void;
 }

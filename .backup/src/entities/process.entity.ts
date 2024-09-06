@@ -1,8 +1,9 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ChildProcess } from 'child_process';
+import { Process as ProcessInterface } from '../interfaces/process.interface';
 
 @Entity()
-export class Process {
+export class Process implements ProcessInterface {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -78,7 +79,23 @@ export class Process {
   stopProcess(): void {
     if (this.status === 'running' && this._process) {
       this._process.kill();
-      this.process = undefined;
+      this._process = undefined;
+      this.status = 'stopped';
+      this.pid = undefined;
+    }
+  }
+
+  // Implement the kill method
+  kill(signal: NodeJS.Signals): void {
+    if (this._process) {
+      this._process.kill(signal);
+    }
+  }
+
+  // Implement the on method
+  on(event: string, listener: (...args: any[]) => void): void {
+    if (this._process) {
+      this._process.on(event, listener);
     }
   }
 }

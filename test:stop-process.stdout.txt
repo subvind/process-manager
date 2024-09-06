@@ -1,4 +1,3 @@
 Starting ProcessController (e2e) stop process test
 Testing: should be able to stop a running process over api
-Attempting to stop process with id: c55cac46-dbac-4d87-a7f4-b9443e92c57b
-Test failed: Expected status 200, got 500
+Test failed: No running processes found to stop

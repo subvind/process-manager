@@ -1,8 +1,9 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ChildProcess } from 'child_process';
+import { Process as ProcessInterface } from '../interfaces/process.interface';
 
 @Entity()
-export class Process {
+export class Process implements ProcessInterface {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -43,15 +44,12 @@ export class Process {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // This property won't be stored in the database
   private _process?: ChildProcess;
 
-  // Getter for the process
   get process(): ChildProcess | undefined {
     return this._process;
   }
 
-  // Setter for the process
   set process(proc: ChildProcess | undefined) {
     this._process = proc;
     if (proc) {
@@ -60,6 +58,20 @@ export class Process {
     } else {
       this.pid = undefined;
       this.status = 'stopped';
+    }
+  }
+
+  kill(signal: NodeJS.Signals): void {
+    if (this._process) {
+      this._process.kill(signal);
+    } else if (this.pid) {
+      process.kill(this.pid, signal);
+    }
+  }
+
+  on(event: string, listener: (...args: any[]) => void): void {
+    if (this._process) {
+      this._process.on(event, listener);
     }
   }
 
