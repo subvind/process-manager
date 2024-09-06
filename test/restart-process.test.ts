@@ -38,8 +38,8 @@ async function runTests() {
       throw new Error(`Expected status to be 'running', got '${restartResponse.body.status}'`);
     }
 
-    console.log('Waiting for 2 seconds to ensure the process has restarted');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('Waiting for 5 seconds to ensure the process has restarted and stabilized');
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     console.log('Verifying that the process is running');
     const processInfoResponse = await request(API_URL).get(`/processes/${processToRestart.id}`);
