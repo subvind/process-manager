@@ -1,23 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { ProcessManagerService } from '../src/services/process-manager.service';
+
+const API_URL = 'http://localhost:9393';
 
 async function runTests() {
   console.log('Starting ProcessController (e2e) tests');
-
-  let app: INestApplication;
-  let processManagerService: ProcessManagerService;
-
-  console.log('Setting up test module');
-  const moduleFixture: TestingModule = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
-
-  app = moduleFixture.createNestApplication();
-  processManagerService = moduleFixture.get<ProcessManagerService>(ProcessManagerService);
-  await app.init();
 
   console.log('Testing: should be able to start a hello world node.js process over api');
   const helloWorldScript = `
@@ -28,7 +14,7 @@ async function runTests() {
   `;
 
   try {
-    const response = await request(app.getHttpServer())
+    const response = await request(API_URL)
       .post('/processes')
       .send({
         name: 'hello-world',
@@ -57,7 +43,13 @@ async function runTests() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     console.log('Verifying that the process is running');
-    const processInfo = await processManagerService.getProcessInfo(response.body.id);
+    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
+    
+    if (processInfoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
+    }
+
+    const processInfo = processInfoResponse.body;
     
     if (processInfo.status !== 'running') {
       throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
@@ -66,9 +58,7 @@ async function runTests() {
     console.log('Test passed successfully');
   } catch (error) {
     console.error('Test failed:', error.message);
-  } finally {
-    console.log('Closing the application');
-    await app.close();
+    process.exit(1);
   }
 }
 

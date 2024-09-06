@@ -153,8 +153,47 @@ Response body: [
     maxMemory: 1024,
     createdAt: '2024-09-06T21:33:13.000Z',
     updatedAt: '2024-09-06T21:41:11.000Z'
+  },
+  {
+    id: 'fbdfccf7-8673-495a-83bf-504f1299e6cb',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1424263,
+    restartAttempts: 3,
+    lastRestart: '2024-09-06T21:41:53.603Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:41:35.000Z',
+    updatedAt: '2024-09-06T21:41:53.000Z'
+  },
+  {
+    id: '96fd9ab2-402c-4099-9776-9442e9d06e69',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1435587,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:00:16.000Z',
+    updatedAt: '2024-09-06T22:00:16.000Z'
   }
 ]
-Successfully listed 8 processes
+Successfully listed 10 processes
 All processes have the expected fields
 Test passed successfully

@@ -5,11 +5,12 @@ const API_URL = 'http://localhost:9393';
 async function runTests() {
   console.log('Starting ProcessController (e2e) tests');
 
-  console.log('Testing: should be able to start a hello world node.js process over api');
-  const helloWorldScript = `
-    console.log('Hello, World!');
+  console.log('Testing: should be able to start a long-running node.js process over api');
+  const longRunningScript = `
+    console.log('Long-running process started');
+    let counter = 0;
     setInterval(() => {
-      console.log('Still running...');
+      console.log('Still running... Counter:', counter++);
     }, 1000);
   `;
 
@@ -17,8 +18,8 @@ async function runTests() {
     const response = await request(API_URL)
       .post('/processes')
       .send({
-        name: 'hello-world',
-        command: `node -e "${helloWorldScript}"`,
+        name: 'long-running-process',
+        command: `node -e "${longRunningScript}"`,
       });
 
     if (response.status !== 201) {
@@ -31,18 +32,18 @@ async function runTests() {
       throw new Error('Response body should have an id property');
     }
 
-    if (response.body.name !== 'hello-world') {
-      throw new Error(`Expected name to be 'hello-world', got '${response.body.name}'`);
+    if (response.body.name !== 'long-running-process') {
+      throw new Error(`Expected name to be 'long-running-process', got '${response.body.name}'`);
     }
 
     if (response.body.status !== 'running') {
       throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
     }
 
-    console.log('Waiting for 2 seconds to ensure the process has started');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('Waiting for 10 seconds to ensure the process has started and is stable');
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
-    console.log('Verifying that the process is running');
+    console.log('Verifying that the process is still running');
     const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
     
     if (processInfoResponse.status !== 200) {
