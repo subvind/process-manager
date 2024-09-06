@@ -126,17 +126,48 @@ export class ProcessManagerService implements OnModuleInit {
     }
   }
 
-  async stopProcess(id: string): Promise<Process> {
+  public async stopProcess(id: string): Promise<Process> {
     const process = await this.processRepository.findOne({ where: { id } });
     if (!process) {
       throw new NotFoundException(`Process with id ${id} not found`);
     }
-    if (process.status === 'running' && process.process) {
-      process.process.kill();
+    
+    this.logger.log(`Attempting to stop process ${process.name} (${process.id})`);
+    
+    if (process.status === 'running') {
+      this.logger.log(`Killing process ${process.name} (PID: ${process.pid})`);
+      
+      if (process.pid) {
+        try {
+          // Try to kill the process using the PID
+          process.kill('SIGTERM');
+          
+          // Wait for the process to exit
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(() => {
+              this.logger.warn(`Process ${process.name} did not exit within 5 seconds, forcing kill with SIGKILL`);
+              process.kill('SIGKILL');
+              resolve();
+            }, 5000);
+
+            process.on('exit', () => {
+              clearTimeout(timeout);
+              resolve();
+            });
+          });
+        } catch (error) {
+          this.logger.error(`Failed to kill process ${process.name} (PID: ${process.pid}): ${error.message}`);
+        }
+      } else {
+        this.logger.warn(`No PID found for process ${process.name}, assuming it's not running`);
+      }
     }
+    
     process.status = 'stopped';
     process.pid = undefined;
-    process.process = undefined;
+    
+    this.logger.log(`Process ${process.name} (${process.id}) stopped successfully`);
+    
     return this.processRepository.save(process);
   }
 
@@ -165,8 +196,12 @@ export class ProcessManagerService implements OnModuleInit {
 
     this.logger.log(`Attempting to restart process ${process.name} (${process.id})`);
 
+    // Stop the existing process
     await this.stopProcess(id);
     
+    // Wait for the process to fully stop
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     const maxRetries = 3;
     let retryCount = 0;
     let success = false;
@@ -210,39 +245,40 @@ export class ProcessManagerService implements OnModuleInit {
   }
 
   private setupProcessEventListeners(process: ProcessInterface) {
-    process.process?.on('exit', async (code) => {
-      this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
-      if (code !== 0) {
-        this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
-        process.status = 'crashed';
-      } else {
-        process.status = 'stopped';
-      }
-      process.pid = undefined;
-      process.process = undefined;
-      await this.processRepository.save(process);
-
-      if (process.status === 'crashed') {
-        if (process.restartAttempts < 3) {
-          this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
-          try {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            await this.restartProcess(process.id);
-          } catch (error) {
-            this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
-          }
+    if (process.process) {
+      process.process.on('exit', async (code) => {
+        this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
+        if (code !== 0 && process.status !== 'stopped') {
+          this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
+          process.status = 'crashed';
         } else {
-          this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
+          process.status = 'stopped';
         }
-      }
-    });
+        process.pid = undefined;
+        await this.processRepository.save(process);
 
-    process.process?.stdout?.on('data', (data) => {
-      this.logger.log(`[${process.name}] ${data.toString().trim()}`);
-    });
+        if (process.status === 'crashed') {
+          if (process.restartAttempts < 3) {
+            this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
+            try {
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              await this.restartProcess(process.id);
+            } catch (error) {
+              this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+            }
+          } else {
+            this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
+          }
+        }
+      });
 
-    process.process?.stderr?.on('data', (data) => {
-      this.logger.error(`[${process.name}] ${data.toString().trim()}`);
-    });
+      process.process.stdout?.on('data', (data) => {
+        this.logger.log(`[${process.name}] ${data.toString().trim()}`);
+      });
+
+      process.process.stderr?.on('data', (data) => {
+        this.logger.error(`[${process.name}] ${data.toString().trim()}`);
+      });
+    }
   }
 }

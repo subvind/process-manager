@@ -384,9 +384,10 @@ export class ProcessManagerService implements OnModuleInit {
 
     const newProcess = this.processRepository.create(data);
     try {
-      const childProcess = spawn(data.command.split(' ')[0], data.command.split(' ').slice(1), {
+      const [command, ...args] = data.command.split(' ');
+      const childProcess = spawn(command, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
-        detached: true,
+        shell: true,
       });
       newProcess.process = childProcess;
       newProcess.pid = childProcess.pid;
@@ -399,18 +400,56 @@ export class ProcessManagerService implements OnModuleInit {
       return this.processRepository.save(newProcess);
     }
   }
-
-  async stopProcess(id: string): Promise<Process> {
+  public async stopProcess(id: string): Promise<Process> {
     const process = await this.processRepository.findOne({ where: { id } });
     if (!process) {
       throw new NotFoundException(`Process with id ${id} not found`);
     }
-    if (process.status === 'running' && process.process) {
-      process.process.kill();
+    
+    this.logger.log(`Attempting to stop process ${process.name} (${process.id})`);
+    
+    if (process.status === 'running') {
+      this.logger.log(`Killing process ${process.name} (PID: ${process.pid})`);
+      
+      // Send SIGTERM first
+      process.process.kill('SIGTERM');
+      
+      // Wait for the process to exit
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          this.logger.warn(`Process ${process.name} did not exit within 5 seconds, forcing kill with SIGKILL`);
+          process.process?.kill('SIGKILL');
+          resolve();
+        }, 5000);
+
+        process.process?.on('exit', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+      });
+
+      // Double-check if the process is still running
+      try {
+        process.process.kill(0);
+        this.logger.warn(`Process ${process.name} (PID: ${process.pid}) is still running after kill attempt`);
+        // Force kill if still running
+        process.process.kill('SIGKILL');
+      } catch (e) {
+        this.logger.log(`Process ${process.name} (PID: ${process.pid}) has been successfully terminated`);
+      }
     }
+    
     process.status = 'stopped';
     process.pid = undefined;
     process.process = undefined;
+    
+    // Remove any event listeners to allow garbage collection
+    if (process.process) {
+      process.process.removeAllListeners();
+    }
+    
+    this.logger.log(`Process ${process.name} (${process.id}) stopped successfully`);
+    
     return this.processRepository.save(process);
   }
 
@@ -439,17 +478,22 @@ export class ProcessManagerService implements OnModuleInit {
 
     this.logger.log(`Attempting to restart process ${process.name} (${process.id})`);
 
+    // Stop the existing process
     await this.stopProcess(id);
     
+    // Wait for the process to fully stop
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     const maxRetries = 3;
     let retryCount = 0;
     let success = false;
 
     while (retryCount < maxRetries && !success) {
       try {
-        const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+        const [command, ...args] = process.command.split(' ');
+        const childProcess = spawn(command, args, {
           stdio: ['ignore', 'pipe', 'pipe'],
-          detached: true,
+          shell: true,
         });
 
         process.process = childProcess;
@@ -485,7 +529,7 @@ export class ProcessManagerService implements OnModuleInit {
   private setupProcessEventListeners(process: ProcessInterface) {
     process.process?.on('exit', async (code) => {
       this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
-      if (code !== 0) {
+      if (code !== 0 && process.status !== 'stopped') {
         this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
         process.status = 'crashed';
       } else {
@@ -519,6 +563,78 @@ export class ProcessManagerService implements OnModuleInit {
     });
   }
 }
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
+import { ProcessManagerService } from '../services/process-manager.service';
+import { ScalingRule } from '../interfaces/scaling-rule.interface';
+
+@Controller('processes')
+export class ProcessController {
+  constructor(private processManagerService: ProcessManagerService) {}
+
+  @Get()
+  listProcesses() {
+    return this.processManagerService.getProcesses();
+  }
+
+  @Post()
+  startProcess(@Body() data: { name: string; command: string }) {
+    return this.processManagerService.startProcess(data);
+  }
+
+  @Post(':id/stop')
+  @HttpCode(200)
+  async stopProcess(@Param('id') id: string) {
+    const stoppedProcess = await this.processManagerService.stopProcess(id);
+    if (stoppedProcess.status !== 'stopped') {
+      throw new InternalServerErrorException('Failed to stop the process');
+    }
+    return stoppedProcess;
+  }
+
+  @Get(':id')
+  getProcessInfo(@Param('id') id: string) {
+    return this.processManagerService.getProcessInfo(id);
+  }
+
+  @Post('scaling-rule')
+  addScalingRule(@Body() rule: ScalingRule) {
+    return this.processManagerService.addScalingRule(rule);
+  }
+
+  @Get('scaling-rules')
+  getScalingRules() {
+    return this.processManagerService.getScalingRules();
+  }
+
+  @Post(':id/restart')
+  @HttpCode(200)
+  async restartProcess(@Param('id') id: string) {
+    const restartedProcess = await this.processManagerService.restartProcess(id);
+    if (restartedProcess.status !== 'running') {
+      throw new InternalServerErrorException('Failed to restart the process');
+    }
+    return restartedProcess;
+  }
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess, spawn } from 'child_process';
+
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
+}
+
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
@@ -608,127 +724,6 @@ export class Process {
   }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
-import { ChildProcess, spawn } from 'child_process';
-
-export interface Process {
-  id?: string;
-  name: string;
-  command: string;
-  status: 'running' | 'stopped' | 'crashed';
-  pid?: number;
-  process?: ChildProcess;
-  restartAttempts: number;
-  lastRestart?: Date;
-  cpu: number;
-  memory: number;
-}
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
-import { ProcessManagerService } from '../services/process-manager.service';
-import { ScalingRule } from '../interfaces/scaling-rule.interface';
-
-@Controller('processes')
-export class ProcessController {
-  constructor(private processManagerService: ProcessManagerService) {}
-
-  @Get()
-  listProcesses() {
-    return this.processManagerService.getProcesses();
-  }
-
-  @Post()
-  startProcess(@Body() data: { name: string; command: string }) {
-    return this.processManagerService.startProcess(data);
-  }
-
-  @Post(':id/stop')
-  @HttpCode(200)
-  async stopProcess(@Param('id') id: string) {
-    const stoppedProcess = await this.processManagerService.stopProcess(id);
-    if (stoppedProcess.status !== 'stopped') {
-      throw new InternalServerErrorException('Failed to stop the process');
-    }
-    return stoppedProcess;
-  }
-
-  @Get(':id')
-  getProcessInfo(@Param('id') id: string) {
-    return this.processManagerService.getProcessInfo(id);
-  }
-
-  @Post('scaling-rule')
-  addScalingRule(@Body() rule: ScalingRule) {
-    return this.processManagerService.addScalingRule(rule);
-  }
-
-  @Get('scaling-rules')
-  getScalingRules() {
-    return this.processManagerService.getScalingRules();
-  }
-
-  @Post(':id/restart')
-  @HttpCode(200)
-  async restartProcess(@Param('id') id: string) {
-    const restartedProcess = await this.processManagerService.restartProcess(id);
-    if (restartedProcess.status !== 'running') {
-      throw new InternalServerErrorException('Failed to restart the process');
-    }
-    return restartedProcess;
-  }
-}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProcessController } from './controllers/process.controller';
-import { ProcessManagerService } from './services/process-manager.service';
-import { Process } from './entities/process.entity';
-import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
-        entities: [Process, ScalingRule],
-        synchronize: true, // Be cautious with this in production
-      }),
-      inject: [ConfigService],
-    }),
-    TypeOrmModule.forFeature([Process, ScalingRule]),
-  ],
-  controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
-})
-export class AppModule {}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/main.ts">
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
-
-import { CustomLogger } from './logger/custom-logger';
-
-export async function bootstrap(): Promise<any> {
-  const logger = new CustomLogger('Bootstrap');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
-  
-  await app.listen(9393);
-}
-bootstrap();
-
-</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/logger/custom-logger.ts">
 import { ConsoleLogger, Injectable, Inject } from '@nestjs/common';
 import * as fs from 'fs';
@@ -798,76 +793,54 @@ export class CustomLogger extends ConsoleLogger {
   }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/test/start-process.test.ts">
-import * as request from 'supertest';
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+import { CustomLogger } from './logger/custom-logger';
 
-const API_URL = 'http://localhost:9393';
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [
+    ProcessManagerService,
+    CustomLogger
+  ]
+})
+export class AppModule {}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/main.ts">
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
-async function runTests() {
-  console.log('Starting ProcessController (e2e) tests');
+import { CustomLogger } from './logger/custom-logger';
 
-  console.log('Testing: should be able to start a long-running node.js process over api');
-  const longRunningScript = `
-    console.log('Long-running process started');
-    let counter = 0;
-    setInterval(() => {
-      console.log('Still running... Counter:', counter++);
-    }, 1000);
-  `;
-
-  try {
-    const response = await request(API_URL)
-      .post('/processes')
-      .send({
-        name: 'long-running-process',
-        command: `node -e "${longRunningScript}"`,
-      });
-
-    if (response.status !== 201) {
-      throw new Error(`Expected status 201, got ${response.status}`);
-    }
-
-    console.log('Response body:', response.body);
-
-    if (!response.body.id) {
-      throw new Error('Response body should have an id property');
-    }
-
-    if (response.body.name !== 'long-running-process') {
-      throw new Error(`Expected name to be 'long-running-process', got '${response.body.name}'`);
-    }
-
-    if (response.body.status !== 'running') {
-      throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
-    }
-
-    console.log('Waiting for 10 seconds to ensure the process has started and is stable');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    console.log('Verifying that the process is still running');
-    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'running') {
-      throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
+export async function bootstrap(): Promise<any> {
+  const logger = new CustomLogger('Bootstrap');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
+  
+  await app.listen(9393);
 }
+bootstrap();
 
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
 import * as request from 'supertest';
@@ -938,352 +911,614 @@ runTests().catch(error => {
   process.exit(1);
 });
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/test/restart-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) restart process test');
-
-  console.log('Testing: should be able to restart a running process over api');
-
-  try {
-    // First, get all running processes
-    const listResponse = await request(API_URL).get('/processes');
-    
-    if (listResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${listResponse.status}`);
-    }
-
-    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
-
-    if (runningProcesses.length === 0) {
-      throw new Error('No running processes found to restart');
-    }
-
-    const processToRestart = runningProcesses[0];
-
-    console.log(`Attempting to restart process with id: ${processToRestart.id}`);
-
-    const restartResponse = await request(API_URL)
-      .post(`/processes/${processToRestart.id}/restart`);
-
-    if (restartResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${restartResponse.status}`);
-    }
-
-    console.log('Restart process response:', restartResponse.body);
-
-    if (restartResponse.body.status !== 'running') {
-      throw new Error(`Expected status to be 'running', got '${restartResponse.body.status}'`);
-    }
-
-    console.log('Waiting for 10 seconds to ensure the process has restarted and stabilized');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    console.log('Verifying that the process is running');
-    const processInfoResponse = await request(API_URL).get(`/processes/${processToRestart.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'running') {
-      console.warn(`Process status is '${processInfo.status}'. This may be due to the process crashing repeatedly.`);
-    }
-
-    if (processInfo.restartAttempts <= processToRestart.restartAttempts) {
-      throw new Error(`Expected restart attempts to increase, but it didn't`);
-    }
-
-    console.log('Test completed. Final process status:', processInfo.status);
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/list-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) list processes test');
-
-  console.log('Testing: should be able to list all processes over api');
-
-  try {
-    const response = await request(API_URL).get('/processes');
-
-    console.log('Response status:', response.status);
-    console.log('Response body:', response.body);
-
-    if (response.status !== 200) {
-      throw new Error(`Expected status 200, got ${response.status}`);
-    }
-
-    if (!Array.isArray(response.body)) {
-      throw new Error('Response body should be an array');
-    }
-
-    console.log(`Successfully listed ${response.body.length} processes`);
-
-    // Check if each process in the list has the expected properties
-    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
-    for (const process of response.body) {
-      for (const field of expectedFields) {
-        if (!(field in process)) {
-          throw new Error(`Expected field '${field}' not found in process ${process.id}`);
-        }
-      }
-    }
-
-    console.log('All processes have the expected fields');
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    if (error.response) {
-      console.error('Error response:', error.response.body);
-    }
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/info-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) info process test');
-
-  console.log('Testing: should be able to get info about a process over api');
-
-  try {
-    // First, get all processes
-    const listResponse = await request(API_URL).get('/processes');
-    
-    if (listResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${listResponse.status}`);
-    }
-
-    if (listResponse.body.length === 0) {
-      throw new Error('No processes found to get info');
-    }
-
-    const processToCheck = listResponse.body[0];
-
-    console.log(`Attempting to get info for process with id: ${processToCheck.id}`);
-
-    const infoResponse = await request(API_URL).get(`/processes/${processToCheck.id}`);
-
-    if (infoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${infoResponse.status}`);
-    }
-
-    console.log('Process info response:', infoResponse.body);
-
-    // Check if all expected fields are present
-    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
-    for (const field of expectedFields) {
-      if (!(field in infoResponse.body)) {
-        throw new Error(`Expected field '${field}' not found in process info`);
-      }
-    }
-
-    // Check if the returned info matches the process we queried
-    if (infoResponse.body.id !== processToCheck.id) {
-      throw new Error(`Returned process id ${infoResponse.body.id} does not match requested id ${processToCheck.id}`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:start-process.stdout.txt">
-Starting ProcessController (e2e) tests
-Testing: should be able to start a long-running node.js process over api
-Response body: {
-  name: 'long-running-process',
-  command: 'node -e "\n' +
-    "    console.log('Long-running process started');\n" +
-    '    let counter = 0;\n' +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running... Counter:', counter++);\n" +
-    '    }, 1000);\n' +
-    '  "',
-  _process: {
-    _events: {},
-    _eventsCount: 1,
-    _closesNeeded: 3,
-    _closesGot: 0,
-    connected: false,
-    signalCode: null,
-    exitCode: null,
-    killed: false,
-    spawnfile: 'node',
-    _handle: { pid: 1435587 },
-    spawnargs: [
-      'node',
-      '-e',
-      '"\n',
-      '',
-      '',
-      '',
-      "console.log('Long-running",
-      'process',
-      "started');\n",
-      '',
-      '',
-      '',
-      'let',
-      'counter',
-      '=',
-      '0;\n',
-      '',
-      '',
-      '',
-      'setInterval(()',
-      '=>',
-      '{\n',
-      '',
-      '',
-      '',
-      '',
-      '',
-      "console.log('Still",
-      'running...',
-      "Counter:',",
-      'counter++);\n',
-      '',
-      '',
-      '',
-      '},',
-      '1000);\n',
-      '',
-      '"'
-    ],
-    pid: 1435587,
-    stdin: null,
-    stdout: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 3,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stderr: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 3,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stdio: [ null, [Object], [Object] ]
-  },
-  pid: 1435587,
-  status: 'running',
-  lastRestart: null,
-  id: '96fd9ab2-402c-4099-9776-9442e9d06e69',
-  restartAttempts: 0,
-  cpu: 0,
-  memory: 0,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T22:00:16.000Z',
-  updatedAt: '2024-09-06T22:00:16.000Z'
-}
-Waiting for 10 seconds to ensure the process has started and is stable
-Verifying that the process is still running
-Test failed: Expected process status to be 'running', got 'stopped'
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
-Starting ProcessController (e2e) stop process test
-Testing: should be able to stop a running process over api
-Test failed: No running processes found to stop
-
-</FILE>
 <FILE path="start:dev.stdout.txt" TARGET>
-c[[90m4:59:48 PM[0m] Starting compilation in watch mode...
+c[[90m5:24:03 PM[0m] Starting compilation in watch mode...
 
-[[90m4:59:50 PM[0m] Found 0 errors. Watching for file changes.
+[[90m5:24:04 PM[0m] Found 0 errors. Watching for file changes.
 
-[2024-09-06T21:59:50.398Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
-[2024-09-06T21:59:50.407Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T21:59:50.407Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
-[2024-09-06T21:59:50.407Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T21:59:50.407Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
-[2024-09-06T21:59:50.424Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
-[2024-09-06T21:59:50.425Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
-[2024-09-06T21:59:50.425Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
-[2024-09-06T21:59:50.428Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
-[2024-09-06T21:59:50.430Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
-[2024-09-06T21:59:50.430Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
-[2024-09-06T21:59:50.431Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
-[2024-09-06T21:59:50.431Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
-[2024-09-06T21:59:50.431Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
-[2024-09-06T21:59:50.431Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
-[2024-09-06T21:59:50.432Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
-[2024-09-06T21:59:50.438Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
-[2024-09-06T22:00:16.109Z] [ERROR] [Bootstrap] [ProcessManagerService] [long-running-process] [eval]:1
-"
-^
+[2024-09-06T22:24:05.303Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T22:24:05.313Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:24:05.313Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T22:24:05.313Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:24:05.313Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:24:05.331Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T22:24:05.331Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:24:05.331Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T22:24:05.334Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T22:24:05.336Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T22:24:05.336Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T22:24:05.336Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T22:24:05.337Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T22:24:05.337Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T22:24:05.337Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T22:24:05.337Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T22:24:05.343Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T22:24:16.777Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T22:24:16.778Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T22:24:16.779Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T22:24:16.807Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T22:24:17.809Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T22:24:18.809Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T22:24:19.810Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T22:24:20.811Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T22:24:21.813Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T22:24:22.814Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T22:24:23.815Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T22:24:24.815Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T22:24:25.816Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T22:24:26.817Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T22:24:27.819Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T22:24:28.819Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T22:24:29.821Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T22:24:30.822Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T22:24:31.824Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T22:24:32.824Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T22:24:33.825Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T22:24:34.382Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (fa7be617-98ef-4d17-bc74-d4466588ce2e)
+[2024-09-06T22:24:34.382Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (fa7be617-98ef-4d17-bc74-d4466588ce2e) stopped successfully
+[2024-09-06T22:24:34.825Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T22:24:35.826Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T22:24:36.827Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T22:24:37.829Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T22:24:38.829Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T22:24:39.830Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T22:24:40.832Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T22:24:41.831Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T22:24:42.832Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T22:24:43.834Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T22:24:44.835Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T22:24:45.836Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+[2024-09-06T22:24:46.837Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[2024-09-06T22:24:47.838Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 30
+[2024-09-06T22:24:48.840Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 31
+[2024-09-06T22:24:49.840Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 32
+[2024-09-06T22:24:50.841Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 33
+[2024-09-06T22:24:51.842Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 34
+[2024-09-06T22:24:52.843Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 35
+[2024-09-06T22:24:53.844Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 36
+[2024-09-06T22:24:54.845Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 37
+[2024-09-06T22:24:55.847Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 38
+[2024-09-06T22:24:56.848Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 39
+[2024-09-06T22:24:57.849Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 40
+[2024-09-06T22:24:58.851Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 41
+[2024-09-06T22:24:59.852Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 42
+[2024-09-06T22:25:00.853Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 43
+[2024-09-06T22:25:01.853Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 44
+[2024-09-06T22:25:02.854Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 45
+[2024-09-06T22:25:03.855Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 46
+[2024-09-06T22:25:04.857Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 47
+[2024-09-06T22:25:05.858Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 48
+[2024-09-06T22:25:06.859Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 49
+[2024-09-06T22:25:07.860Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 50
+[2024-09-06T22:25:08.861Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 51
+[2024-09-06T22:25:09.862Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 52
+[2024-09-06T22:25:10.863Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 53
+[2024-09-06T22:25:11.864Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 54
+[2024-09-06T22:25:12.865Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 55
+[2024-09-06T22:25:13.866Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 56
+[2024-09-06T22:25:14.867Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 57
+[2024-09-06T22:25:15.868Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 58
+[2024-09-06T22:25:16.869Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 59
+[2024-09-06T22:25:17.870Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 60
+[2024-09-06T22:25:18.871Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 61
+[2024-09-06T22:25:19.872Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 62
+[2024-09-06T22:25:20.873Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 63
+[2024-09-06T22:25:21.875Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 64
+[2024-09-06T22:25:22.875Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 65
+[2024-09-06T22:25:23.876Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 66
+[2024-09-06T22:25:24.877Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 67
+[2024-09-06T22:25:25.878Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 68
+[2024-09-06T22:25:26.880Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 69
+[2024-09-06T22:25:27.881Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 70
+c[[90m5:25:28 PM[0m] File change detected. Starting incremental compilation...
 
-SyntaxError: Invalid or unexpected token
-    at makeContextifyScript (node:internal/vm:185:14)
-    at node:internal/process/execution:107:22
-    at [eval]-wrapper:6:24
-    at runScript (node:internal/process/execution:101:62)
-    at evalScript (node:internal/process/execution:133:3)
-    at node:internal/main/eval_string:51:3
+[96msrc/controllers/process.controller.ts[0m:[93m11[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcesses' does not exist on type 'ProcessManagerService'.
 
-Node.js v20.16.0
-[2024-09-06T22:00:16.111Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) exited with code 1
-[2024-09-06T22:00:16.111Z] [ERROR] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) crashed with code 1
+[7m11[0m     return this.processManagerService.getProcesses();
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m16[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'startProcess' does not exist on type 'ProcessManagerService'.
+
+[7m16[0m     return this.processManagerService.startProcess(data);
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m31[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcessInfo' does not exist on type 'ProcessManagerService'.
+
+[7m31[0m     return this.processManagerService.getProcessInfo(id);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m36[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'addScalingRule' does not exist on type 'ProcessManagerService'.
+
+[7m36[0m     return this.processManagerService.addScalingRule(rule);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m41[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getScalingRules' does not exist on type 'ProcessManagerService'.
+
+[7m41[0m     return this.processManagerService.getScalingRules();
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m47[0m:[93m63[0m - [91merror[0m[90m TS2339: [0mProperty 'restartProcess' does not exist on type 'ProcessManagerService'.
+
+[7m47[0m     const restartedProcess = await this.processManagerService.restartProcess(id);
+[7m  [0m [91m                                                              ~~~~~~~~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m14[0m:[93m14[0m - [91merror[0m[90m TS2420: [0mClass 'ProcessManagerService' incorrectly implements interface 'OnModuleInit'.
+  Property 'onModuleInit' is missing in type 'ProcessManagerService' but required in type 'OnModuleInit'.
+
+[7m14[0m export class ProcessManagerService implements OnModuleInit {
+[7m  [0m [91m             ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96mnode_modules/@nestjs/common/interfaces/hooks/on-init.interface.d.ts[0m:[93m9[0m:[93m5[0m
+    [7m9[0m     onModuleInit(): any;
+    [7m [0m [96m    ~~~~~~~~~~~~~~~~~~~~[0m
+    'onModuleInit' is declared here.
+
+[[90m5:25:28 PM[0m] Found 7 errors. Watching for file changes.
+
+[2024-09-06T22:25:28.882Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 71
+[2024-09-06T22:25:29.882Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 72
+[2024-09-06T22:25:30.883Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 73
+[2024-09-06T22:25:31.885Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 74
+[2024-09-06T22:25:32.885Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 75
+[2024-09-06T22:25:33.886Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 76
+[2024-09-06T22:25:34.888Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 77
+[2024-09-06T22:25:35.888Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 78
+[2024-09-06T22:25:36.889Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 79
+[2024-09-06T22:25:37.890Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 80
+[2024-09-06T22:25:38.891Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 81
+[2024-09-06T22:25:39.892Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 82
+[2024-09-06T22:25:40.893Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 83
+[2024-09-06T22:25:41.894Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 84
+[2024-09-06T22:25:42.895Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 85
+[2024-09-06T22:25:43.896Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 86
+[2024-09-06T22:25:44.897Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 87
+[2024-09-06T22:25:45.898Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 88
+[2024-09-06T22:25:46.899Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 89
+[2024-09-06T22:25:47.900Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 90
+[2024-09-06T22:25:48.902Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 91
+[2024-09-06T22:25:49.901Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 92
+[2024-09-06T22:25:50.902Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 93
+[2024-09-06T22:25:51.903Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 94
+[2024-09-06T22:25:52.904Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 95
+[2024-09-06T22:25:53.904Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 96
+[2024-09-06T22:25:54.905Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 97
+[2024-09-06T22:25:55.907Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 98
+c[[90m5:25:56 PM[0m] File change detected. Starting incremental compilation...
+
+[2024-09-06T22:25:56.908Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 99
+[[90m5:25:56 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T22:25:57.418Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T22:25:57.428Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:25:57.428Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T22:25:57.428Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:25:57.428Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:25:57.448Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T22:25:57.448Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:25:57.448Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T22:25:57.452Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T22:25:57.454Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T22:25:57.454Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T22:25:57.454Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T22:25:57.454Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T22:25:57.455Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T22:25:57.455Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T22:25:57.455Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T22:25:57.462Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T22:26:07.647Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T22:26:07.648Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T22:26:07.648Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T22:26:07.677Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T22:26:08.680Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T22:26:09.680Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T22:26:10.682Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T22:26:11.682Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T22:26:12.684Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T22:26:13.684Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T22:26:14.686Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T22:26:15.686Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T22:26:16.686Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T22:26:17.686Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T22:26:18.687Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T22:26:19.689Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T22:26:20.689Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T22:26:21.691Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T22:26:22.691Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T22:26:23.692Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T22:26:24.271Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (3bec8370-5225-4353-82a7-aef274044065)
+[2024-09-06T22:26:24.271Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (3bec8370-5225-4353-82a7-aef274044065) stopped successfully
+[2024-09-06T22:26:24.693Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T22:26:25.694Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T22:26:26.695Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T22:26:27.696Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T22:26:28.697Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T22:26:29.698Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T22:26:30.700Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T22:26:31.701Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T22:26:32.702Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T22:26:33.703Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T22:26:34.704Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T22:26:35.705Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T22:26:36.706Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+[2024-09-06T22:26:37.706Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[2024-09-06T22:26:38.707Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 30
+[2024-09-06T22:26:39.708Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 31
+[2024-09-06T22:26:40.710Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 32
+[2024-09-06T22:26:41.710Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 33
+[2024-09-06T22:26:42.711Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 34
+[2024-09-06T22:26:43.712Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 35
+[2024-09-06T22:26:44.713Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 36
+[2024-09-06T22:26:45.714Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 37
+[2024-09-06T22:26:46.715Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 38
+[2024-09-06T22:26:47.716Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 39
+[2024-09-06T22:26:48.717Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 40
+[2024-09-06T22:26:49.719Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 41
+[2024-09-06T22:26:50.719Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 42
+[2024-09-06T22:26:51.721Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 43
+[2024-09-06T22:26:52.721Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 44
+[2024-09-06T22:26:53.722Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 45
+[2024-09-06T22:26:54.723Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 46
+[2024-09-06T22:26:55.725Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 47
+[2024-09-06T22:26:56.725Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 48
+[2024-09-06T22:26:57.727Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 49
+[2024-09-06T22:26:58.728Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 50
+[2024-09-06T22:26:59.730Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 51
+[2024-09-06T22:27:00.730Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 52
+[2024-09-06T22:27:01.730Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 53
+[2024-09-06T22:27:02.731Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 54
+[2024-09-06T22:27:03.732Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 55
+[2024-09-06T22:27:04.733Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 56
+[2024-09-06T22:27:05.734Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 57
+[2024-09-06T22:27:06.734Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 58
+[2024-09-06T22:27:07.735Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 59
+[2024-09-06T22:27:08.736Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 60
+[2024-09-06T22:27:09.737Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 61
+[2024-09-06T22:27:10.738Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 62
+[2024-09-06T22:27:11.739Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 63
+[2024-09-06T22:27:12.740Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 64
+[2024-09-06T22:27:13.741Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 65
+[2024-09-06T22:27:14.742Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 66
+[2024-09-06T22:27:15.742Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 67
+[2024-09-06T22:27:16.743Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 68
+[2024-09-06T22:27:17.745Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 69
+[2024-09-06T22:27:18.746Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 70
+[2024-09-06T22:27:19.748Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 71
+[2024-09-06T22:27:20.749Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 72
+[2024-09-06T22:27:21.749Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 73
+[2024-09-06T22:27:22.750Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 74
+[2024-09-06T22:27:23.752Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 75
+[2024-09-06T22:27:24.753Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 76
+[2024-09-06T22:27:25.754Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 77
+[2024-09-06T22:27:26.755Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 78
+[2024-09-06T22:27:27.755Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 79
+[2024-09-06T22:27:28.756Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 80
+[2024-09-06T22:27:29.757Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 81
+c[[90m5:27:30 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/services/process-manager.service.ts[0m:[93m1[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m1[0m private setupProcessEventListeners(process: ProcessInterface) {
+[7m [0m [91m~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m1[0m:[93m43[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1[0m private setupProcessEventListeners(process: ProcessInterface) {
+[7m [0m [91m                                          ~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m1[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m1[0m private setupProcessEventListeners(process: ProcessInterface) {
+[7m [0m [91m                                                              ~[0m
+
+[[90m5:27:30 PM[0m] Found 3 errors. Watching for file changes.
+
+[2024-09-06T22:27:30.758Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 82
+[2024-09-06T22:27:31.758Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 83
+[2024-09-06T22:27:32.759Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 84
+[2024-09-06T22:27:33.760Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 85
+[2024-09-06T22:27:34.761Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 86
+[2024-09-06T22:27:35.762Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 87
+[2024-09-06T22:27:36.763Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 88
+[2024-09-06T22:27:37.763Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 89
+[2024-09-06T22:27:38.764Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 90
+[2024-09-06T22:27:39.765Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 91
+[2024-09-06T22:27:40.766Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 92
+[2024-09-06T22:27:41.767Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 93
+[2024-09-06T22:27:42.768Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 94
+[2024-09-06T22:27:43.769Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 95
+[2024-09-06T22:27:44.769Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 96
+[2024-09-06T22:27:45.770Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 97
+[2024-09-06T22:27:46.771Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 98
+[2024-09-06T22:27:47.772Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 99
+[2024-09-06T22:27:48.773Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 100
+[2024-09-06T22:27:49.775Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 101
+[2024-09-06T22:27:50.775Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 102
+[2024-09-06T22:27:51.775Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 103
+[2024-09-06T22:27:52.777Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 104
+[2024-09-06T22:27:53.777Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 105
+[2024-09-06T22:27:54.779Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 106
+[2024-09-06T22:27:55.779Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 107
+[2024-09-06T22:27:56.780Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 108
+[2024-09-06T22:27:57.781Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 109
+[2024-09-06T22:27:58.782Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 110
+[2024-09-06T22:27:59.783Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 111
+[2024-09-06T22:28:00.784Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 112
+[2024-09-06T22:28:01.785Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 113
+[2024-09-06T22:28:02.786Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 114
+[2024-09-06T22:28:03.787Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 115
+[2024-09-06T22:28:04.788Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 116
+[2024-09-06T22:28:05.789Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 117
+[2024-09-06T22:28:06.789Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 118
+[2024-09-06T22:28:07.789Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 119
+[2024-09-06T22:28:08.790Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 120
+[2024-09-06T22:28:09.792Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 121
+[2024-09-06T22:28:10.792Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 122
+[2024-09-06T22:28:11.794Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 123
+[2024-09-06T22:28:12.796Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 124
+[2024-09-06T22:28:13.797Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 125
+[2024-09-06T22:28:14.799Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 126
+[2024-09-06T22:28:15.800Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 127
+[2024-09-06T22:28:16.802Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 128
+[2024-09-06T22:28:17.804Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 129
+[2024-09-06T22:28:18.804Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 130
+[2024-09-06T22:28:19.806Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 131
+[2024-09-06T22:28:20.807Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 132
+[2024-09-06T22:28:21.808Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 133
+[2024-09-06T22:28:22.809Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 134
+[2024-09-06T22:28:23.810Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 135
+[2024-09-06T22:28:24.811Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 136
+[2024-09-06T22:28:25.812Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 137
+[2024-09-06T22:28:26.813Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 138
+[2024-09-06T22:28:27.814Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 139
+[2024-09-06T22:28:28.815Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 140
+[2024-09-06T22:28:29.816Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 141
+c[[90m5:28:30 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m5:28:30 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T22:28:30.735Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T22:28:30.745Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:28:30.746Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T22:28:30.746Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:28:30.746Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:28:30.764Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T22:28:30.764Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:28:30.765Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T22:28:30.768Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T22:28:30.770Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T22:28:30.770Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T22:28:30.770Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T22:28:30.771Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T22:28:30.771Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T22:28:30.771Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T22:28:30.771Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T22:28:30.778Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+c[[90m5:29:33 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m5:29:33 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T22:29:34.248Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T22:29:34.259Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:29:34.259Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T22:29:34.259Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:29:34.259Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:29:34.278Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T22:29:34.278Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:29:34.278Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T22:29:34.282Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T22:29:34.283Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T22:29:34.284Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T22:29:34.284Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T22:29:34.284Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T22:29:34.285Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T22:29:34.285Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T22:29:34.285Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T22:29:34.291Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T22:30:23.092Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T22:30:23.093Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T22:30:23.094Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T22:30:23.123Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T22:30:24.125Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T22:30:25.126Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T22:30:26.127Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T22:30:27.129Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T22:30:28.129Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T22:30:29.130Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T22:30:30.131Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T22:30:31.132Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T22:30:32.134Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T22:30:33.134Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T22:30:34.135Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T22:30:35.137Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T22:30:35.668Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (a4ea751c-1e95-4a05-80ab-89197a5d5bda)
+[2024-09-06T22:30:35.668Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (a4ea751c-1e95-4a05-80ab-89197a5d5bda) stopped successfully
+[2024-09-06T22:30:36.138Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T22:30:37.139Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T22:30:38.140Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T22:30:39.142Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T22:30:40.142Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T22:30:41.144Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T22:30:42.146Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T22:30:43.147Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T22:30:44.148Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T22:30:45.149Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T22:30:46.149Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T22:30:47.151Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T22:30:48.151Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T22:30:49.152Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T22:30:50.153Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T22:30:51.155Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T22:30:52.156Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+[2024-09-06T22:30:53.157Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[2024-09-06T22:30:54.158Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 30
+[2024-09-06T22:30:55.159Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 31
+[2024-09-06T22:30:56.160Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 32
+[2024-09-06T22:30:57.161Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 33
+[2024-09-06T22:30:58.162Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 34
+[2024-09-06T22:30:59.163Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 35
+[2024-09-06T22:31:00.165Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 36
+[2024-09-06T22:31:01.165Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 37
+[2024-09-06T22:31:02.167Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 38
+[2024-09-06T22:31:03.167Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 39
+[2024-09-06T22:31:04.168Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 40
+[2024-09-06T22:31:05.169Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 41
+[2024-09-06T22:31:06.169Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 42
+[2024-09-06T22:31:07.170Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 43
+[2024-09-06T22:31:08.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 44
+[2024-09-06T22:31:09.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 45
+[2024-09-06T22:31:10.174Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 46
+[2024-09-06T22:31:11.175Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 47
+[2024-09-06T22:31:12.177Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 48
+[2024-09-06T22:31:13.177Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 49
+[2024-09-06T22:31:14.179Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 50
+[2024-09-06T22:31:15.180Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 51
+[2024-09-06T22:31:16.182Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 52
+[2024-09-06T22:31:17.182Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 53
+[2024-09-06T22:31:18.183Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 54
+[2024-09-06T22:31:19.182Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 55
+[2024-09-06T22:31:20.183Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 56
+[2024-09-06T22:31:21.185Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 57
+[2024-09-06T22:31:22.186Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 58
+[2024-09-06T22:31:23.188Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 59
+[2024-09-06T22:31:24.189Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 60
+[2024-09-06T22:31:25.191Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 61
+[2024-09-06T22:31:26.192Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 62
+[2024-09-06T22:31:27.193Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 63
+[2024-09-06T22:31:28.194Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 64
+[2024-09-06T22:31:29.195Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 65
+[2024-09-06T22:31:30.196Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 66
+[2024-09-06T22:31:31.197Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 67
+[2024-09-06T22:31:32.198Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 68
+[2024-09-06T22:31:33.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 69
+[2024-09-06T22:31:34.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 70
+[2024-09-06T22:31:35.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 71
+[2024-09-06T22:31:36.202Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 72
+[2024-09-06T22:31:37.203Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 73
+[2024-09-06T22:31:38.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 74
+[2024-09-06T22:31:39.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 75
+[2024-09-06T22:31:40.207Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 76
+[2024-09-06T22:31:41.207Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 77
+c[[90m5:31:41 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m5:31:41 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T22:31:42.002Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T22:31:42.012Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:31:42.012Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T22:31:42.012Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:31:42.012Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T22:31:42.030Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T22:31:42.030Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T22:31:42.031Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T22:31:42.034Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T22:31:42.036Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T22:31:42.036Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T22:31:42.036Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T22:31:42.036Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T22:31:42.037Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T22:31:42.037Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T22:31:42.037Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T22:31:42.043Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T22:31:49.413Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T22:31:49.414Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T22:31:49.414Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T22:31:49.443Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T22:31:50.445Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T22:31:51.447Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T22:31:52.448Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T22:31:53.449Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T22:31:54.450Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T22:31:55.451Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T22:31:56.452Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T22:31:57.454Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T22:31:58.456Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T22:31:59.456Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T22:32:00.457Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T22:32:01.458Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T22:32:02.402Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (c55cac46-dbac-4d87-a7f4-b9443e92c57b)
+[2024-09-06T22:32:02.402Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1456818)
+[2024-09-06T22:32:02.408Z] [ERROR] [Bootstrap] [ExceptionsHandler] Cannot read properties of undefined (reading 'kill')
+[2024-09-06T22:32:02.408Z] [ERROR] [Bootstrap] [ExceptionsHandler] TypeError: Cannot read properties of undefined (reading 'kill')
+    at ProcessManagerService.stopProcess (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:140:23)
+    at ProcessController.stopProcess (/home/travis/Projects/process-manager/src/controllers/process.controller.ts:22:28)
+    at async /home/travis/Projects/process-manager/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /home/travis/Projects/process-manager/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[2024-09-06T22:32:02.460Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T22:32:03.460Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T22:32:04.461Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T22:32:05.462Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T22:32:06.463Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T22:32:07.464Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T22:32:08.465Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T22:32:09.465Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T22:32:10.467Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T22:32:11.468Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T22:32:12.469Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T22:32:13.470Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T22:32:14.471Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T22:32:15.473Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T22:32:16.473Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T22:32:17.474Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T22:32:18.475Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+[2024-09-06T22:32:19.477Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[2024-09-06T22:32:20.477Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 30
+[2024-09-06T22:32:21.478Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 31
+[2024-09-06T22:32:22.479Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 32
+[2024-09-06T22:32:23.480Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 33
+[2024-09-06T22:32:24.482Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 34
+[2024-09-06T22:32:25.483Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 35
+[2024-09-06T22:32:26.485Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 36
+[2024-09-06T22:32:27.486Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 37
+[2024-09-06T22:32:28.488Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 38
+[2024-09-06T22:32:29.488Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 39
+[2024-09-06T22:32:30.489Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 40
+[2024-09-06T22:32:31.489Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 41
+[2024-09-06T22:32:32.490Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 42
+[2024-09-06T22:32:33.491Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 43
+[2024-09-06T22:32:34.492Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 44
+[2024-09-06T22:32:35.493Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 45
+[2024-09-06T22:32:36.494Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 46
+[2024-09-06T22:32:37.495Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 47
+[2024-09-06T22:32:38.495Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 48
+[2024-09-06T22:32:39.496Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 49
+[2024-09-06T22:32:40.497Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 50
+[2024-09-06T22:32:41.498Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 51
+[2024-09-06T22:32:42.500Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 52
+[2024-09-06T22:32:43.500Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 53
+[2024-09-06T22:32:44.501Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 54
+[2024-09-06T22:32:45.502Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 55
+[2024-09-06T22:32:46.503Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 56
+[2024-09-06T22:32:47.504Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 57
+[2024-09-06T22:32:48.505Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 58
+[2024-09-06T22:32:49.506Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 59
+[2024-09-06T22:32:50.507Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 60
+[2024-09-06T22:32:51.508Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 61
+[2024-09-06T22:32:52.509Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 62
+[2024-09-06T22:32:53.509Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 63
+[2024-09-06T22:32:54.509Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 64
+[2024-09-06T22:32:55.510Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 65
+[2024-09-06T22:32:56.512Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 66
+[2024-09-06T22:32:57.513Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 67
+[2024-09-06T22:32:58.515Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 68
+[2024-09-06T22:32:59.515Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 69
+[2024-09-06T22:33:00.516Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 70
+[2024-09-06T22:33:01.518Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 71
+[2024-09-06T22:33:02.519Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 72
+[2024-09-06T22:33:03.520Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 73
+[2024-09-06T22:33:04.521Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 74
+[2024-09-06T22:33:05.522Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 75
+[2024-09-06T22:33:06.522Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 76
+[2024-09-06T22:33:07.523Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 77
+[2024-09-06T22:33:08.524Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 78
+[2024-09-06T22:33:09.525Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 79
+[2024-09-06T22:33:10.526Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 80
+[2024-09-06T22:33:11.527Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 81
+[2024-09-06T22:33:12.528Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 82
+[2024-09-06T22:33:13.529Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 83
+[2024-09-06T22:33:14.530Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 84
+[2024-09-06T22:33:15.531Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 85
 
 </FILE>
 <REQUEST>
-Invalid or unexpected token
+process didn't kill because process is undefined
 </REQUEST>
