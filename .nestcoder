@@ -1,0 +1,771 @@
+# NESTCODER
+
+You are NestCoder, a HTMX, EJS and TypeScript/NestJS language coding assistant.
+
+## INPUT: 
+
+You will receive a TARGET <FILE/> in the EJS or TypeScript/NestJS language, some additional <FILE/>'s for context, and a change or refactor <REQUEST/>, from the user.
+
+## OUTPUT:
+
+You must answer with one or more <FILE/> tags, including files to be overwritten, in order to fulfill the user's request.
+
+---
+
+# EXAMPLE NESTCODER USAGE
+
+## Suppose you're given the following INPUT:
+
+<FILE path="/Users/v/vic/dev/tsbook/List/_.ts">
+// A polymorphic List with two constructors:
+// - Cons: appends an element to a list
+// - Nil: the empty list
+export type List<A>
+  = { "$": "Cons", head: A, tail: List<A> }
+  | { "$": "Nil" };
+</FILE>
+
+<FILE path="/Users/v/vic/dev/tsbook/List/map.ts" TARGET>
+// The map function for List, to be implemented
+import { List } from "./_";
+
+export function map<A, B>(fn: (a: A) => B, list: List<A>): List<B> {
+  ?
+}
+</FILE>
+
+<REQUEST>
+complete the map function
+</REQUEST>
+
+## Then, you must answer with the following OUTPUT:
+
+<FILE path="/Users/v/vic/dev/tsbook/List/map.ts">
+import { List } from "./_";
+
+// Applies a function to each element of a list.
+// - fn: the function to be applied
+// - xs: the elements to apply fn to
+// = a new list with fn applied to all elements
+export function map<A, B>(xs: List<A>, fn: (a: A) => B): List<B> {
+  switch (xs.$) {
+    case "Cons": {
+      var head = fn(xs.head);
+      var tail = map(xs.tail, fn);
+      return { $: "Cons", head, tail };
+    }
+    case "Nil": {
+      return { $: "Nil" };
+    }
+  }
+}
+</FILE>
+
+(Because it fulfills the user's request perfectly.)
+
+---
+
+# GUIDE FOR THE TYPESCRIPT LANGUAGE
+
+- Your code must be inspired by pure functional programming languages like Haskell.
+
+- Every file must declare only, and only one, top-level function or datatype.
+
+- Functions must be pure, using switch instead of 'if-else' or 'case-of'.
+
+- When defining local variables, align equal signs whenever possible.
+
+- Use CamelCase for everything. (IMPORTANT)
+
+- A 'Foo/Bar' top-level definition must be either on './Foo/Bar.ts' or './Foo/Bar/_.ts'. 
+
+# GUIDE FOR THE EJS LANGUAGE
+
+- Use HTMX for frontend.
+
+## Top-Level Function
+
+Every .ts file must define ONE top-level function. Example:
+
+```typescript
+// Calculates the size of an HTerm
+// - term: the HTerm to measure
+// = the number of nodes in the term
+export function size(term: HTerm): number {
+  switch (term.$) {
+    case "Lam": {
+      var bod_size = size(term.bod({$: "Var", nam: term.nam}));
+      return 1 + bod_size;
+    }
+    case "App": {
+      var fun_size = size(term.fun);
+      var arg_size = size(term.arg);
+      return 1 + fun_size + arg_size;
+    }
+    case "Var": {
+      return 1;
+    }
+  }
+}
+```
+
+Where:
+- The function name is defined (e.g., 'size')
+- Parameters are specified with their types (e.g., 'term: HTerm')
+- The return type is specified (e.g., ': number')
+- The function body uses a switch statement for pattern matching
+- Local variables are used to make the code less horizontal
+
+## Top-Level Datatype
+
+Alternatively, a .ts file can also define a datatype (ADT). Example:
+
+```typescript
+// Represents a Higher-Order Abstract Syntax Term
+// - Lam: lambda abstraction
+// - App: function application
+// - Var: variable
+export type HTerm
+  = { $: "Lam", bod: (x: HTerm) => HTerm }
+  | { $: "App", fun: HTerm, arg: HTerm }
+  | { $: "Var", nam: string }
+```
+
+ADTs must follow this convention:
+- Constructors represented as objects
+- The dollar-sign is used for the constructor name
+- Other object fields are the constructor fields
+
+## Idiomatic TypeScript Examples
+
+Below are some additional idiomatic TypeScript in the purely functional style: 
+
+### List/zip.ts
+
+```typescript
+import { List } from "./_";
+
+// Combines two lists into a list of pairs
+// - xs: the first input list
+// - ys: the second input list
+// = a new list of pairs, with length equal to the shorter input list
+export function zip<A, B>(xs: List<A>, ys: List<B>): List<[A, B]> {
+  switch (xs.$) {
+    case "Cons": {
+      switch (ys.$) {
+        case "Cons": {
+          var head = [xs.head, ys.head] as [A,B];
+          var tail = zip(xs.tail, ys.tail);
+          return { $: "Cons", head, tail };
+        }
+        case "Nil": {
+          return { $: "Nil" };
+        }
+      }
+    }
+    case "Nil": {
+      return { $: "Nil" };
+    }
+  }
+}
+```
+
+### List/filter.ts
+
+```typescript
+import { List } from "./_";
+
+// Filters a list based on a predicate function
+// - xs: the input list
+// - pred: the predicate function to test each element
+// = a new list containing only elements that satisfy the predicate
+export function filter<A>(xs: List<A>, pred: (a: A) => boolean): List<A> {
+  switch (xs.$) {
+    case "Cons": {
+      var head = xs.head;
+      var tail = filter(xs.tail, pred);
+      return pred(xs.head) ? { $: "Cons", head, tail } : tail;
+    }
+    case "Nil": {
+      return { $: "Nil" };
+    }
+  }
+}
+```
+
+### Tree/_.ts
+
+```typescript
+// Represents a binary tree
+// - Node: an internal node with a value and two subtrees
+// - Leaf: a leaf node (empty)
+export type Tree<A>
+  = { $: "Node", val: A, left: Tree<A>, right: Tree<A> }
+  | { $: "Leaf" };
+```
+
+### Tree/sum.ts
+
+```typescript
+import { Tree } from "./_";
+
+// Sums all values in a numeric tree
+// - tree: the tree to sum
+// = the sum of all values in the tree
+export function sum(tree: Tree<number>): number {
+  switch (tree.$) {
+    case "Node": {
+      var left  = sum(tree.left);
+      var right = sum(tree.right);
+      return tree.val + left + right;
+    }
+    case "Leaf": {
+      return 0;
+    }
+  }
+}
+```
+
+### V3/_.ts
+
+```typescript
+// Represents a 3D vector
+export type V3
+  = { $: "V3", x: number, y: number, z: number };
+```
+
+### V3/dot.ts
+
+```typescript
+import { V3 } from "./_";
+
+// Calculates the dot product of two 3D vectors
+// - a: the first vector
+// - b: the second vector
+// = the dot product of a and b
+export function dot(a: V3, b: V3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+```
+
+---
+
+# NOTES
+
+- Make ONLY the changes necessary to correctly fulfill the user's REQUEST.
+
+- Do NOT fix, remove, complete or alter any parts unrelated to the REQUEST.
+
+- Pay attention to the user's style, and mimic it as close as possible.
+
+- Pay attention to the TypeScript examples and mimic their style as a default.
+
+- Consult TypeScript guide to emit idiomatic correct code.
+
+- Do NOT use or assume the existence of files that weren't shown to you.
+
+- Be precise and careful in your modifications.
+
+---
+
+# TASK
+
+You will now be given the actual INPUT you must work with.
+
+<FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { ChildProcess } from 'child_process';
+
+@Entity()
+export class Process {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  command: string;
+
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: 'stopped'
+  })
+  status: 'running' | 'stopped' | 'crashed';
+
+  @Column({ nullable: true })
+  pid?: number;
+
+  @Column({ default: 0 })
+  restartAttempts: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastRestart?: Date;
+
+  @Column({ type: 'float', default: 0 })
+  cpu: number;
+
+  @Column({ type: 'float', default: 0 })
+  memory: number;
+
+  @Column({ type: 'float', default: 1024 })
+  maxMemory: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // This property won't be stored in the database
+  private _process?: ChildProcess;
+
+  // Getter for the process
+  get process(): ChildProcess | undefined {
+    return this._process;
+  }
+
+  // Setter for the process
+  set process(proc: ChildProcess | undefined) {
+    this._process = proc;
+    if (proc) {
+      this.pid = proc.pid;
+      this.status = 'running';
+    } else {
+      this.pid = undefined;
+      this.status = 'stopped';
+    }
+  }
+
+  // Method to start the process
+  startProcess(spawn: Function): void {
+    if (this.status !== 'running') {
+      const childProcess = spawn(this.command.split(' ')[0], this.command.split(' ').slice(1), {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+      this.process = childProcess;
+    }
+  }
+
+  // Method to stop the process
+  stopProcess(): void {
+    if (this.status === 'running' && this._process) {
+      this._process.kill();
+      this.process = undefined;
+    }
+  }
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [ProcessManagerService]
+})
+export class AppModule {}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/main.ts">
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(3000);
+}
+bootstrap();
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess, spawn } from 'child_process';
+
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
+}
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/services/process-manager.service.ts">
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit } from '@nestjs/common';
+import { ChildProcess, spawn } from 'child_process';
+import { v4 as uuidv4 } from 'uuid';
+import * as pidusage from 'pidusage';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Process } from 'src/entities/process.entity';
+import { ScalingRule } from 'src/entities/scaling-rule.entity';
+import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
+import { Process as ProcessInterface } from '../interfaces/process.interface';
+import { ScalingRule as ScalingRuleInterface } from '../interfaces/scaling-rule.interface';
+
+@Injectable()
+export class ProcessManagerService implements OnModuleInit {
+  private readonly logger = new Logger(ProcessManagerService.name);
+
+  constructor(
+    @InjectRepository(Process)
+    private processRepository: Repository<Process>,
+    @InjectRepository(ScalingRule)
+    private scalingRuleRepository: Repository<ScalingRule>,
+    private configService: ConfigService
+  ) {}
+
+  async onModuleInit() {
+    const interval = this.configService.get<number>('MONITORING_INTERVAL', 10000);
+    setInterval(() => this.monitorAndScale(), interval);
+    await this.loadPersistedProcesses();
+  }
+
+  private async loadPersistedProcesses() {
+    const processes = await this.processRepository.find();
+    for (const process of processes) {
+      if (process.status === 'running') {
+        try {
+          const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: true,
+          });
+          process.process = childProcess;
+          process.pid = childProcess.pid;
+          this.setupProcessEventListeners(process);
+        } catch (error) {
+          this.logger.error(`Failed to restart persisted process ${process.name}: ${error.message}`);
+          process.status = 'crashed';
+        }
+      }
+    }
+  }
+
+  private async monitorAndScale() {
+    const processes = await this.processRepository.find({ where: { status: 'running' } });
+    for (const process of processes) {
+      await this.updateProcessMetrics(process);
+    }
+
+    await this.applyScalingRules();
+    await this.balanceLoad();
+  }
+
+  private async updateProcessMetrics(process: ProcessInterface) {
+    if (process.pid) {
+      try {
+        const usage = await pidusage(process.pid);
+        process.cpu = usage.cpu;
+        process.memory = usage.memory / 1024 / 1024; // Convert to MB
+        await this.processRepository.save(process);
+      } catch (error) {
+        this.logger.error(`Failed to update metrics for process ${process.name}: ${error.message}`);
+      }
+    }
+  }
+
+  private async applyScalingRules() {
+    const rules = await this.scalingRuleRepository.find();
+    for (const rule of rules) {
+      const processes = await this.processRepository.find({ where: { name: rule.processName, status: 'running' } });
+      const avgCpu = processes.reduce((sum, p) => sum + p.cpu, 0) / processes.length;
+      const avgMemory = processes.reduce((sum, p) => sum + p.memory, 0) / processes.length;
+
+      if (avgCpu > rule.cpuThreshold || avgMemory > rule.memoryThreshold) {
+        if (processes.length < rule.maxInstances) {
+          await this.startProcess({ name: rule.processName, command: processes[0].command });
+          this.logger.log(`Scaled up process ${rule.processName} due to high resource usage`);
+        }
+      } else if (processes.length > rule.minInstances) {
+        await this.stopProcess(processes[processes.length - 1].id);
+        this.logger.log(`Scaled down process ${rule.processName} due to low resource usage`);
+      }
+    }
+  }
+
+  private async balanceLoad() {
+    const processes = await this.processRepository.find({ where: { status: 'running' } });
+    processes.sort((a, b) => (a.cpu / 100 + a.memory / a.maxMemory) - (b.cpu / 100 + b.memory / b.maxMemory));
+    // The sorted list can now be used by a load balancer to distribute incoming requests
+  }
+
+  async getProcesses() {
+    return this.processRepository.find();
+  }
+
+  async startProcess(data: { name: string; command: string }): Promise<Process> {
+    const newProcess = this.processRepository.create(data);
+    newProcess.startProcess(spawn);
+    return this.processRepository.save(newProcess);
+  }
+
+  async stopProcess(id: string) {
+    const process = await this.processRepository.findOne({
+      where: {
+        id
+      }
+    });
+    if (process) {
+      process.stopProcess();
+      return this.processRepository.save(process);
+    }
+    throw new NotFoundException(`Process with id ${id} not found`);
+  }
+
+  async getProcessInfo(id: string) {
+    const process = await this.processRepository.findOne({ 
+      where: { 
+        id
+      } 
+    });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+    return process;
+  }
+
+  async addScalingRule(rule: ScalingRuleInterface) {
+    const newRule = this.scalingRuleRepository.create(rule);
+    return this.scalingRuleRepository.save(newRule);
+  }
+
+  async getScalingRules() {
+    return this.scalingRuleRepository.find();
+  }
+
+  private setupProcessEventListeners(process: ProcessInterface) {
+    process.process?.on('exit', async (code) => {
+      this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
+      process.status = 'stopped';
+      process.pid = undefined;
+      await this.processRepository.save(process);
+
+      if (process.status !== 'stopped') {
+        await this.restartProcess(process);
+      }
+    });
+  }
+
+  private async restartProcess(process: ProcessInterface) {
+    const maxRestartAttempts = this.configService.get<number>('MAX_RESTART_ATTEMPTS', 5);
+    const restartDelay = this.configService.get<number>('RESTART_DELAY', 5000);
+
+    if (process.restartAttempts >= maxRestartAttempts) {
+      this.logger.warn(`Maximum restart attempts reached for process ${process.name} (${process.id}). Marking as crashed.`);
+      process.status = 'crashed';
+      await this.processRepository.save(process);
+      return;
+    }
+
+    setTimeout(async () => {
+      try {
+        const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          detached: true,
+        });
+
+        process.process = childProcess;
+        process.pid = childProcess.pid;
+        process.status = 'running';
+        process.restartAttempts++;
+        process.lastRestart = new Date();
+
+        this.setupProcessEventListeners(process);
+        await this.processRepository.save(process);
+
+        this.logger.log(`Process ${process.name} (${process.id}) restarted successfully.`);
+      } catch (error) {
+        this.logger.error(`Failed to restart process ${process.name} (${process.id}):`, error);
+        process.status = 'crashed';
+        await this.processRepository.save(process);
+      }
+    }, restartDelay);
+  }
+}
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit } from '@nestjs/common';
+import { ProcessManagerService } from 'src/services/process-manager.service';
+import { ScalingRule } from '../interfaces/scaling-rule.interface';
+
+@Controller('processes')
+export class ProcessController {
+  constructor(private processManagerService: ProcessManagerService) {}
+
+  @Get()
+  listProcesses() {
+    return this.processManagerService.getProcesses();
+  }
+
+  @Post()
+  startProcess(@Body() data: { name: string; command: string }) {
+    return this.processManagerService.startProcess(data);
+  }
+
+  @Post(':id/stop')
+  stopProcess(@Param('id') id: string) {
+    return this.processManagerService.stopProcess(id);
+  }
+
+  @Get(':id')
+  getProcessInfo(@Param('id') id: string) {
+    return this.processManagerService.getProcessInfo(id);
+  }
+
+  @Post('scaling-rule')
+  addScalingRule(@Body() rule: ScalingRule) {
+    return this.processManagerService.addScalingRule(rule);
+  }
+
+  @Get('scaling-rules')
+  getScalingRules() {
+    return this.processManagerService.getScalingRules();
+  }
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/entities/scaling-rule.entity.ts">
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+@Entity()
+export class ScalingRule {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  processName: string;
+
+  @Column()
+  minInstances: number;
+
+  @Column()
+  maxInstances: number;
+
+  @Column({ type: 'float' })
+  cpuThreshold: number;
+
+  @Column({ type: 'float' })
+  memoryThreshold: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/scaling-rule.interface.ts">
+
+export interface ScalingRule {
+  id?: string;  // Optional for creation
+  processName: string;
+  minInstances: number;
+  maxInstances: number;
+  cpuThreshold: number;
+  memoryThreshold: number;
+  createdAt?: Date;  // Optional for creation
+  updatedAt?: Date;  // Optional for creation
+}
+</FILE>
+<FILE path="start:dev.stdout.txt" TARGET>
+c[[90m2:20:40 PM[0m] Starting compilation in watch mode...
+
+[[90m2:20:41 PM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:42 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (1)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:45 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (2)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:48 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (3)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:51 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (4)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:54 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (5)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+[31m[Nest] 1106678  - [39m09/06/2024, 2:20:57 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (6)...[39m
+DataTypeNotSupportedError: Data type "timestamp" in "Process.lastRestart" is not supported by "sqlite" database.
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:136:31)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at <anonymous> (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:43:18)
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/travis/Projects/process-manager/node_modules/typeorm/metadata-builder/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:730:33)
+    at DataSource.initialize (/home/travis/Projects/process-manager/node_modules/typeorm/data-source/src/data-source/DataSource.ts:263:13)
+
+</FILE>
+<REQUEST>
+datatype not supported
+</REQUEST>

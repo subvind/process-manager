@@ -5,7 +5,6 @@ import { ProcessController } from './controllers/process.controller';
 import { ProcessManagerService } from './services/process-manager.service';
 import { Process } from './entities/process.entity';
 import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
 
 @Module({
   imports: [
@@ -13,8 +12,12 @@ import { CustomLogger } from './logger/custom-logger';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        type: 'postgres',
+        host: configService.get('DB_HOST'),
+        port: +configService.get<number>('DB_PORT'),
+        username: configService.get('DB_USERNAME'),
+        password: configService.get('DB_PASSWORD'),
+        database: configService.get('DB_NAME'),
         entities: [Process, ScalingRule],
         synchronize: true, // Be cautious with this in production
       }),
@@ -23,9 +26,6 @@ import { CustomLogger } from './logger/custom-logger';
     TypeOrmModule.forFeature([Process, ScalingRule]),
   ],
   controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
+  providers: [ProcessManagerService]
 })
 export class AppModule {}

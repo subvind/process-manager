@@ -25,7 +25,7 @@ export class Process {
   @Column({ default: 0 })
   restartAttempts: number;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   lastRestart?: Date;
 
   @Column({ type: 'float', default: 0 })
