@@ -1,3 +1,4 @@
 Starting ProcessController (e2e) stop process test
 Testing: should be able to stop a running process over api
-Test failed: No running processes found to stop
+Attempting to stop process with id: 93e7cd01-e02b-4783-a9ea-ee85420709fd
+Test failed: socket hang up

@@ -62,9 +62,8 @@ export class Process implements ProcessInterface {
   }
 
   kill(signal: NodeJS.Signals): void {
-    if (this._process) {
-      this._process.kill(signal);
-    } else if (this.pid) {
+    if (this.pid) {
+      console.log('kill', this.pid, signal)
       process.kill(this.pid, signal);
     }
   }
@@ -88,11 +87,11 @@ export class Process implements ProcessInterface {
 
   // Method to stop the process
   stopProcess(): void {
-    if (this.status === 'running' && this._process) {
-      this._process.kill();
-      this._process = undefined;
+    if (this.status === 'running') {
+      this.kill('SIGTERM');
+      // this._process = undefined;
       this.status = 'stopped';
-      this.pid = undefined;
+      // this.pid = undefined;
     }
   }
 }

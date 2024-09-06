@@ -1,9 +1,757 @@
-c[[90m6:18:16 PM[0m] Starting compilation in watch mode...
+c[[90m6:46:06 PM[0m] Starting compilation in watch mode...
 
-[96msrc/services/process-manager.service.ts[0m:[93m161[0m:[93m26[0m - [91merror[0m[90m TS2345: [0mArgument of type '0' is not assignable to parameter of type 'Signals'.
+[[90m6:46:07 PM[0m] Found 0 errors. Watching for file changes.
 
-[7m161[0m             process.kill(0);
-[7m   [0m [91m                         ~[0m
+[2024-09-06T23:46:08.098Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:46:08.108Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:46:08.108Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:46:08.108Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:46:08.108Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:46:08.126Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:46:08.126Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:46:08.126Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:46:08.129Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:46:08.131Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:46:08.131Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:46:08.131Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:46:08.131Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:46:08.131Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:46:08.132Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:46:08.132Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:46:08.140Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:46:08.141Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:46:08.141Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:46:08.156Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:46:08.169Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:46:09.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:46:10.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:46:11.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:46:12.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:46:13.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:46:14.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:46:15.102Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (9aa7d91d-2312-442b-a6e1-0dc970916bd9)
+[2024-09-06T23:46:15.102Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1490946)
+[2024-09-06T23:46:15.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:46:16.174Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:46:17.175Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:46:18.143Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:46:18.175Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:46:19.177Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:46:20.103Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
 
-[[90m6:18:18 PM[0m] Found 1 error. Watching for file changes.
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:68:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
 
+Node.js v20.16.0
+c[[90m6:47:55 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:47:55 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:47:56.210Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:47:56.220Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:47:56.220Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:47:56.220Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:47:56.220Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:47:56.237Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:47:56.237Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:47:56.238Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:47:56.240Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:47:56.242Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:47:56.242Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:47:56.242Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:47:56.243Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:47:56.243Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:47:56.243Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:47:56.243Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:47:56.251Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:47:56.252Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:47:56.252Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:47:56.265Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:47:56.281Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:47:57.282Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:47:58.284Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:47:59.285Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:48:00.287Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:48:01.287Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:48:02.289Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:48:03.288Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:48:04.100Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (e93acbc6-50d8-460f-a429-96d1ed7335d1)
+[2024-09-06T23:48:04.100Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1503156)
+[2024-09-06T23:48:04.290Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:48:05.290Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:48:06.254Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:48:06.292Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:48:07.293Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:48:08.294Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:48:09.102Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:68:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:48:25 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:48:25 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:48:25.585Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:48:25.595Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:48:25.595Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:48:25.595Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:48:25.595Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:48:25.613Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:48:25.614Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:48:25.614Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:48:25.617Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:48:25.619Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:48:25.620Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:48:25.620Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:48:25.620Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:48:25.620Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:48:25.620Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:48:25.621Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:48:25.629Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:48:25.630Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:48:25.630Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:48:25.645Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:48:25.660Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:48:26.662Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:48:27.661Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:48:28.662Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:48:29.663Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:48:30.664Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:48:31.666Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:48:32.185Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (ab085664-2af6-4f87-b580-f45b4b87eb77)
+[2024-09-06T23:48:32.185Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1504306)
+[2024-09-06T23:48:32.666Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:48:33.668Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:48:34.669Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:48:35.632Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:48:35.671Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:48:36.670Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:48:37.186Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:68:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:49:08 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:49:08 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:49:09.087Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:49:09.097Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:49:09.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:49:09.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:49:09.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:49:09.116Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:49:09.116Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:49:09.116Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:49:09.119Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:49:09.121Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:49:09.121Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:49:09.121Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:49:09.121Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:49:09.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:49:09.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:49:09.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:49:09.130Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:49:09.130Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:49:09.131Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:49:09.145Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:49:09.158Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:49:10.161Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:49:11.161Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:49:12.163Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:49:13.163Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:49:14.165Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:49:14.450Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (1887e604-7a47-4422-81d4-acdb2f4471b4)
+[2024-09-06T23:49:14.450Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1504738)
+[2024-09-06T23:49:15.165Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:49:16.166Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:49:17.167Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:49:18.168Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:49:19.133Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:49:19.170Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:49:19.450Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:68:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:50:18 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/entities/process.entity.ts[0m:[93m92[0m:[93m20[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string' is not assignable to parameter of type 'number'.
+
+[7m92[0m       process.kill('SIGKILL');
+[7m  [0m [91m                   ~~~~~~~~~[0m
+
+[[90m6:50:18 PM[0m] Found 1 error. Watching for file changes.
+
+c[[90m6:50:35 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:50:35 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:50:36.059Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:50:36.068Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:50:36.069Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:50:36.069Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:50:36.069Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:50:36.089Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:50:36.089Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:50:36.089Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:50:36.092Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:50:36.094Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:50:36.094Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:50:36.094Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:50:36.094Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:50:36.095Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:50:36.095Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:50:36.095Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:50:36.103Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:50:36.104Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:50:36.104Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:50:36.119Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:50:36.133Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:50:37.135Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:50:38.137Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:50:39.138Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:50:40.138Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:50:41.140Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:50:42.140Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:50:42.143Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (8af9c636-9afd-4d6f-89d6-c12306f19a11)
+[2024-09-06T23:50:42.143Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1505183)
+[2024-09-06T23:50:43.141Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:50:44.143Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:50:45.144Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:50:46.105Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:50:46.146Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:50:47.145Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:68:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:51:53 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:51:54 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:51:54.427Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:51:54.437Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:51:54.437Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:51:54.437Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:51:54.437Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:51:54.455Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:51:54.455Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:51:54.455Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:51:54.458Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:51:54.460Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:51:54.460Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:51:54.460Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:51:54.460Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:51:54.460Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:51:54.461Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:51:54.461Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:51:54.469Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:51:54.470Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:51:54.470Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:51:54.485Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:51:54.499Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:51:55.501Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:51:56.501Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:51:57.501Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:51:58.502Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:51:59.502Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:52:00.502Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:52:01.502Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:52:02.504Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:52:03.503Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:52:04.472Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:52:04.504Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:52:05.505Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:52:06.506Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:52:07.508Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:52:08.509Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:52:09.511Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:52:10.512Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T23:52:11.512Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T23:52:12.512Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+c[[90m6:52:12 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:52:12 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:52:13.118Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:52:13.128Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:52:13.128Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:52:13.128Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:52:13.128Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:52:13.146Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:52:13.146Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:52:13.146Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:52:13.149Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:52:13.150Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:52:13.151Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:52:13.151Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:52:13.151Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:52:13.151Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:52:13.151Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:52:13.152Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:52:13.160Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:52:13.161Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:52:13.161Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:52:13.176Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:52:13.190Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:52:14.191Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:52:15.192Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:52:16.021Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (4d6d1a30-49a8-4935-9c48-6c0f7bc81b63)
+[2024-09-06T23:52:16.021Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1506945)
+kill 1506945 SIGTERM
+[2024-09-06T23:52:16.021Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to kill process long-running-process (PID: 1506945): kill ESRCH
+[2024-09-06T23:52:16.021Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (4d6d1a30-49a8-4935-9c48-6c0f7bc81b63) stopped successfully
+[2024-09-06T23:52:16.193Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:52:17.193Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:52:18.194Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:52:19.195Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:52:20.197Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:52:21.198Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:52:22.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:52:23.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:52:24.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:52:25.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:52:26.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:52:27.202Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:52:28.203Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:52:29.204Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T23:52:30.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T23:52:31.207Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T23:52:32.208Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T23:52:33.209Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T23:52:34.211Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T23:52:35.212Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T23:52:36.213Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+c[[90m6:52:36 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:52:36 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:52:37.087Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:52:37.097Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:52:37.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:52:37.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:52:37.097Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:52:37.116Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:52:37.116Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:52:37.117Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:52:37.120Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:52:37.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:52:37.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:52:37.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:52:37.122Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:52:37.123Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:52:37.123Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:52:37.123Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:52:37.131Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:52:37.132Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:52:37.132Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:52:37.147Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:52:37.160Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:52:38.162Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:52:39.163Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:52:40.164Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:52:41.166Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:52:42.167Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:52:42.385Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (60714785-9c50-4312-8c0b-ed730289ff7c)
+[2024-09-06T23:52:42.385Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1507150)
+kill 1507150 SIGKILL
+[2024-09-06T23:52:42.385Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to kill process long-running-process (PID: 1507150): kill ESRCH
+[2024-09-06T23:52:42.385Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (60714785-9c50-4312-8c0b-ed730289ff7c) stopped successfully
+[2024-09-06T23:52:43.168Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:52:44.170Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:52:45.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:52:46.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:52:47.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:52:48.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:52:49.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:52:50.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:52:51.172Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:52:52.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:52:53.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T23:52:54.171Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T23:52:55.173Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T23:52:56.173Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T23:52:57.174Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T23:52:58.175Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T23:52:59.176Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T23:53:00.178Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T23:53:01.179Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T23:53:02.180Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T23:53:03.182Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T23:53:04.182Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T23:53:05.183Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T23:53:06.184Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+[2024-09-06T23:53:07.186Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[2024-09-06T23:53:08.187Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 30
+[2024-09-06T23:53:09.188Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 31
+[2024-09-06T23:53:10.190Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 32
+[2024-09-06T23:53:11.190Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 33
+[2024-09-06T23:53:12.191Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 34
+[2024-09-06T23:53:13.192Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 35
+[2024-09-06T23:53:14.193Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 36
+[2024-09-06T23:53:15.195Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 37
+[2024-09-06T23:53:16.196Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 38
+[2024-09-06T23:53:17.198Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 39
+[2024-09-06T23:53:18.198Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 40
+[2024-09-06T23:53:19.199Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 41
+[2024-09-06T23:53:20.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 42
+[2024-09-06T23:53:21.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 43
+[2024-09-06T23:53:22.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 44
+[2024-09-06T23:53:23.203Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 45
+[2024-09-06T23:53:24.204Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 46
+[2024-09-06T23:53:25.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 47
+[2024-09-06T23:53:26.206Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 48
+[2024-09-06T23:53:27.207Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 49
+[2024-09-06T23:53:28.208Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 50
+[2024-09-06T23:53:29.209Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 51
+[2024-09-06T23:53:30.211Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 52
+[2024-09-06T23:53:31.211Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 53
+[2024-09-06T23:53:32.212Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 54
+[2024-09-06T23:53:33.213Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 55
+[2024-09-06T23:53:34.215Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 56
+[2024-09-06T23:53:35.216Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 57
+[2024-09-06T23:53:36.217Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 58
+[2024-09-06T23:53:37.218Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 59
+[2024-09-06T23:53:38.219Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 60
+[2024-09-06T23:53:39.220Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 61
+[2024-09-06T23:53:40.221Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 62
+[2024-09-06T23:53:41.223Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 63
+[2024-09-06T23:53:42.223Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 64
+[2024-09-06T23:53:43.224Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 65
+[2024-09-06T23:53:44.225Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 66
+[2024-09-06T23:53:45.226Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 67
+[2024-09-06T23:53:46.227Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 68
+[2024-09-06T23:53:47.229Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 69
+[2024-09-06T23:53:48.229Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 70
+[2024-09-06T23:53:49.230Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 71
+[2024-09-06T23:53:50.231Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 72
+[2024-09-06T23:53:51.233Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 73
+[2024-09-06T23:53:52.236Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 74
+[2024-09-06T23:53:53.236Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 75
+[2024-09-06T23:53:54.238Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 76
+[2024-09-06T23:53:55.239Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 77
+[2024-09-06T23:53:56.241Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 78
+[2024-09-06T23:53:57.242Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 79
+[2024-09-06T23:53:58.244Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 80
+[2024-09-06T23:53:59.244Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 81
+[2024-09-06T23:54:00.245Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 82
+[2024-09-06T23:54:01.247Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 83
+[2024-09-06T23:54:02.248Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 84
+[2024-09-06T23:54:03.249Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 85
+[2024-09-06T23:54:04.250Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 86
+[2024-09-06T23:54:05.251Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 87
+c[[90m6:54:05 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:54:05 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:54:05.952Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:54:05.962Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:05.962Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:54:05.963Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:05.963Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:05.981Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:54:05.981Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:05.981Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:54:05.984Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:54:05.986Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:54:05.986Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:54:05.987Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:54:05.987Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:54:05.987Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:54:05.987Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:54:05.987Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:54:05.995Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:54:05.996Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:54:05.996Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:54:06.010Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:54:06.026Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:54:07.028Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:54:08.028Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:54:09.029Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:54:10.030Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:54:11.031Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:54:12.033Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:54:12.298Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (d1458dad-dcd2-4720-ab43-f27fe42eeef4)
+[2024-09-06T23:54:12.298Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1507494)
+kill 1507494 0
+[2024-09-06T23:54:12.298Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to kill process long-running-process (PID: 1507494): kill ESRCH
+[2024-09-06T23:54:12.298Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (d1458dad-dcd2-4720-ab43-f27fe42eeef4) stopped successfully
+[2024-09-06T23:54:13.033Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:54:14.034Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:54:15.035Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:54:16.036Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:54:17.038Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:54:18.039Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:54:19.041Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:54:20.042Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:54:21.042Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:54:22.044Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T23:54:23.045Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 16
+[2024-09-06T23:54:24.046Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 17
+[2024-09-06T23:54:25.047Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 18
+[2024-09-06T23:54:26.048Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 19
+[2024-09-06T23:54:27.049Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 20
+[2024-09-06T23:54:28.050Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 21
+[2024-09-06T23:54:29.051Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 22
+[2024-09-06T23:54:30.053Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 23
+[2024-09-06T23:54:31.052Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 24
+[2024-09-06T23:54:32.052Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 25
+[2024-09-06T23:54:33.053Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 26
+[2024-09-06T23:54:34.054Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 27
+[2024-09-06T23:54:35.055Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 28
+c[[90m6:54:36 PM[0m] File change detected. Starting incremental compilation...
+
+[2024-09-06T23:54:36.056Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 29
+[[90m6:54:36 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:54:36.496Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:54:36.506Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:36.506Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:54:36.506Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:36.506Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:36.524Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:54:36.525Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:36.525Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:54:36.528Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:54:36.529Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:54:36.530Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:54:36.530Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:54:36.530Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:54:36.530Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:54:36.530Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:54:36.531Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:54:36.539Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:54:36.539Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:54:36.539Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:54:36.554Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:54:36.568Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:54:37.569Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:54:38.568Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:54:39.569Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:54:40.570Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:54:41.571Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:54:42.572Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:54:43.572Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:54:44.572Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:54:45.573Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:54:46.541Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process long-running-process: No matching pid found
+[2024-09-06T23:54:46.574Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:54:47.574Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:54:48.575Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:54:49.576Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:54:50.578Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:54:51.579Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:54:52.580Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+c[[90m6:54:53 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:54:53 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:54:53.869Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:54:53.879Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:53.879Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:54:53.879Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:53.879Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:54:53.899Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:54:53.899Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:54:53.899Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:54:53.902Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:54:53.903Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:54:53.904Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:54:53.904Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:54:53.904Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:54:53.904Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:54:53.904Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:54:53.905Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:54:53.913Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:54:53.914Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:54:53.914Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:54:53.928Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:54:53.943Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:54:54.945Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:54:55.945Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:54:56.818Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (b3766c56-62e6-406b-81e3-bf2016c585de)
+[2024-09-06T23:54:56.818Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1508919)
+kill 1508919 SIGTERM
+[2024-09-06T23:54:56.818Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to kill process long-running-process (PID: 1508919): kill ESRCH
+[2024-09-06T23:54:56.818Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (b3766c56-62e6-406b-81e3-bf2016c585de) stopped successfully
+[2024-09-06T23:54:56.946Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:54:57.948Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:54:58.948Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:54:59.949Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:55:00.950Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:55:01.952Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:55:02.952Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:55:03.953Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:55:04.954Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:55:05.955Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:55:06.957Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-06T23:55:07.957Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-06T23:55:08.958Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 14
+[2024-09-06T23:55:09.959Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 15
+[2024-09-06T23:55:10.264Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (fd4100c8-3baf-405a-a228-07f344905165)
+[2024-09-06T23:55:10.264Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1509120)
+kill 1509120 SIGTERM
+[2024-09-06T23:55:10.265Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (fd4100c8-3baf-405a-a228-07f344905165) exited with code null
+[2024-09-06T23:55:10.265Z] [ERROR] [Bootstrap] [ProcessManagerService] Process long-running-process (fd4100c8-3baf-405a-a228-07f344905165) crashed with code null
+[2024-09-06T23:55:10.271Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart crashed process long-running-process (fd4100c8-3baf-405a-a228-07f344905165)
+[2024-09-06T23:55:15.265Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+kill 1509120 SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:67:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:56:33 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:56:33 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:56:33.658Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:56:33.669Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:56:33.669Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:56:33.669Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:56:33.669Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:56:33.687Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:56:33.687Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:56:33.688Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:56:33.691Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:56:33.692Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:56:33.693Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:56:33.693Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:56:33.693Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:56:33.693Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:56:33.693Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:56:33.694Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:56:33.701Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T23:56:41.518Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process already exists. Stopping existing process before starting a new one.
+[2024-09-06T23:56:41.519Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-06T23:56:41.519Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69) stopped successfully
+[2024-09-06T23:56:41.547Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-06T23:56:42.549Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-06T23:56:43.549Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-06T23:56:44.550Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-06T23:56:45.551Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-06T23:56:46.552Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-06T23:56:47.552Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-06T23:56:48.552Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-06T23:56:49.553Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-06T23:56:50.554Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-06T23:56:51.555Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-06T23:56:52.556Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-06T23:56:53.557Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-06T23:56:53.710Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (93e7cd01-e02b-4783-a9ea-ee85420709fd)
+[2024-09-06T23:56:53.710Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1510310)
+kill 1510310 SIGTERM
+[2024-09-06T23:56:53.713Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (93e7cd01-e02b-4783-a9ea-ee85420709fd) exited with code null
+[2024-09-06T23:56:53.713Z] [ERROR] [Bootstrap] [ProcessManagerService] Process long-running-process (93e7cd01-e02b-4783-a9ea-ee85420709fd) crashed with code null
+[2024-09-06T23:56:53.719Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to restart crashed process long-running-process (93e7cd01-e02b-4783-a9ea-ee85420709fd)
+[2024-09-06T23:56:58.715Z] [WARN] [Bootstrap] [ProcessManagerService] Process long-running-process did not exit within 5 seconds, forcing kill with SIGKILL
+kill 1510310 SIGKILL
+node:internal/process/per_thread:226
+      throw new ErrnoException(err, 'kill');
+      ^
+
+Error: kill ESRCH
+    at process.kill (node:internal/process/per_thread:226:13)
+    at Process.kill (/home/travis/Projects/process-manager/src/entities/process.entity.ts:67:15)
+    at Timeout._onTimeout (/home/travis/Projects/process-manager/src/services/process-manager.service.ts:148:23)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  errno: -3,
+  code: 'ESRCH',
+  syscall: 'kill'
+}
+
+Node.js v20.16.0
+c[[90m6:59:12 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m6:59:12 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T23:59:13.091Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T23:59:13.101Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:59:13.102Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T23:59:13.102Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:59:13.102Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T23:59:13.120Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T23:59:13.120Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T23:59:13.120Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T23:59:13.123Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T23:59:13.125Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T23:59:13.125Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T23:59:13.126Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T23:59:13.126Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T23:59:13.126Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T23:59:13.126Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T23:59:13.126Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T23:59:13.133Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
