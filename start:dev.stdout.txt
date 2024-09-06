@@ -165,3 +165,125 @@
 [2024-09-06T21:05:13.048Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
 [2024-09-06T21:05:13.049Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
 [2024-09-06T21:05:23.052Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+c[[90m4:09:42 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/controllers/process.controller.ts[0m:[93m11[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcesses' does not exist on type 'ProcessManagerService'.
+
+[7m11[0m     return this.processManagerService.getProcesses();
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m16[0m:[93m39[0m - [91merror[0m[90m TS2551: [0mProperty 'startProcess' does not exist on type 'ProcessManagerService'. Did you mean 'restartProcess'?
+
+[7m16[0m     return this.processManagerService.startProcess(data);
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+  [96msrc/services/process-manager.service.ts[0m:[93m27[0m:[93m9[0m
+    [7m27[0m   async restartProcess(id: string): Promise<Process> {
+    [7m  [0m [96m        ~~~~~~~~~~~~~~[0m
+    'restartProcess' is declared here.
+
+[96msrc/controllers/process.controller.ts[0m:[93m22[0m:[93m61[0m - [91merror[0m[90m TS2339: [0mProperty 'stopProcess' does not exist on type 'ProcessManagerService'.
+
+[7m22[0m     const stoppedProcess = await this.processManagerService.stopProcess(id);
+[7m  [0m [91m                                                            ~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m31[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcessInfo' does not exist on type 'ProcessManagerService'.
+
+[7m31[0m     return this.processManagerService.getProcessInfo(id);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m36[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'addScalingRule' does not exist on type 'ProcessManagerService'.
+
+[7m36[0m     return this.processManagerService.addScalingRule(rule);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m41[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getScalingRules' does not exist on type 'ProcessManagerService'.
+
+[7m41[0m     return this.processManagerService.getScalingRules();
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m14[0m:[93m14[0m - [91merror[0m[90m TS2420: [0mClass 'ProcessManagerService' incorrectly implements interface 'OnModuleInit'.
+  Property 'onModuleInit' is missing in type 'ProcessManagerService' but required in type 'OnModuleInit'.
+
+[7m14[0m export class ProcessManagerService implements OnModuleInit {
+[7m  [0m [91m             ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96mnode_modules/@nestjs/common/interfaces/hooks/on-init.interface.d.ts[0m:[93m9[0m:[93m5[0m
+    [7m9[0m     onModuleInit(): any;
+    [7m [0m [96m    ~~~~~~~~~~~~~~~~~~~~[0m
+    'onModuleInit' is declared here.
+
+[96msrc/services/process-manager.service.ts[0m:[93m37[0m:[93m16[0m - [91merror[0m[90m TS2339: [0mProperty 'stopProcess' does not exist on type 'ProcessManagerService'.
+
+[7m37[0m     await this.stopProcess(id);
+[7m  [0m [91m               ~~~~~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m50[0m:[93m10[0m - [91merror[0m[90m TS2339: [0mProperty 'setupProcessEventListeners' does not exist on type 'ProcessManagerService'.
+
+[7m50[0m     this.setupProcessEventListeners(process);
+[7m  [0m [91m         ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[[90m4:09:42 PM[0m] Found 9 errors. Watching for file changes.
+
+c[[90m4:11:14 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/controllers/process.controller.ts[0m:[93m47[0m:[93m63[0m - [91merror[0m[90m TS2341: [0mProperty 'restartProcess' is private and only accessible within class 'ProcessManagerService'.
+
+[7m47[0m     const restartedProcess = await this.processManagerService.restartProcess(id);
+[7m  [0m [91m                                                              ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m47[0m:[93m78[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string' is not assignable to parameter of type 'Process'.
+
+[7m47[0m     const restartedProcess = await this.processManagerService.restartProcess(id);
+[7m  [0m [91m                                                                             ~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m48[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'status' does not exist on type 'void'.
+
+[7m48[0m     if (restartedProcess.status !== 'running') {
+[7m  [0m [91m                         ~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m159[0m:[93m17[0m - [91merror[0m[90m TS2393: [0mDuplicate function implementation.
+
+[7m159[0m   private async restartProcess(process: ProcessInterface) {
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m195[0m:[93m9[0m - [91merror[0m[90m TS2393: [0mDuplicate function implementation.
+
+[7m195[0m   async restartProcess(id: string): Promise<Process> {
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[[90m4:11:14 PM[0m] Found 5 errors. Watching for file changes.
+
+c[[90m4:11:31 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/services/process-manager.service.ts[0m:[93m154[0m:[93m35[0m - [91merror[0m[90m TS2345: [0mArgument of type 'Process' is not assignable to parameter of type 'string'.
+
+[7m154[0m         await this.restartProcess(process);
+[7m   [0m [91m                                  ~~~~~~~[0m
+
+[[90m4:11:31 PM[0m] Found 1 error. Watching for file changes.
+
+c[[90m4:12:08 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m4:12:08 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-06T21:12:08.532Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-06T21:12:08.542Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T21:12:08.542Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-06T21:12:08.542Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T21:12:08.542Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-06T21:12:08.560Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-06T21:12:08.560Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-06T21:12:08.560Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-06T21:12:08.564Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-06T21:12:08.565Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-06T21:12:08.565Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-06T21:12:08.566Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-06T21:12:08.566Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-06T21:12:08.566Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-06T21:12:08.566Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-06T21:12:08.566Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-06T21:12:08.572Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-06T21:15:38.694Z] [ERROR] [Bootstrap] [ProcessManagerService] Failed to update metrics for process hello-world: No matching pid found
+[2024-09-06T21:15:42.138Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (9b7fcd22-6ca6-4218-afa1-079fc75c039a) restarted successfully.
+[2024-09-06T21:15:42.155Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (9b7fcd22-6ca6-4218-afa1-079fc75c039a) exited with code 1

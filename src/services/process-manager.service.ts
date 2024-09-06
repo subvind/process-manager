@@ -151,44 +151,38 @@ export class ProcessManagerService implements OnModuleInit {
       await this.processRepository.save(process);
 
       if (process.status !== 'stopped') {
-        await this.restartProcess(process);
+        await this.restartProcess(process.id);
       }
     });
   }
 
-  private async restartProcess(process: ProcessInterface) {
-    const maxRestartAttempts = this.configService.get<number>('MAX_RESTART_ATTEMPTS', 5);
-    const restartDelay = this.configService.get<number>('RESTART_DELAY', 5000);
-
-    if (process.restartAttempts >= maxRestartAttempts) {
-      this.logger.warn(`Maximum restart attempts reached for process ${process.name} (${process.id}). Marking as crashed.`);
-      process.status = 'crashed';
-      await this.processRepository.save(process);
-      return;
+  async restartProcess(id: string): Promise<Process> {
+    const process = await this.processRepository.findOne({
+      where: {
+        id
+      }
+    });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
     }
 
-    setTimeout(async () => {
-      try {
-        const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          detached: true,
-        });
+    await this.stopProcess(id);
+    
+    const childProcess = spawn(process.command.split(' ')[0], process.command.split(' ').slice(1), {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+    });
 
-        process.process = childProcess;
-        process.pid = childProcess.pid;
-        process.status = 'running';
-        process.restartAttempts++;
-        process.lastRestart = new Date();
+    process.process = childProcess;
+    process.pid = childProcess.pid;
+    process.status = 'running';
+    process.restartAttempts++;
+    process.lastRestart = new Date();
 
-        this.setupProcessEventListeners(process);
-        await this.processRepository.save(process);
+    this.setupProcessEventListeners(process);
+    await this.processRepository.save(process);
 
-        this.logger.log(`Process ${process.name} (${process.id}) restarted successfully.`);
-      } catch (error) {
-        this.logger.error(`Failed to restart process ${process.name} (${process.id}):`, error);
-        process.status = 'crashed';
-        await this.processRepository.save(process);
-      }
-    }, restartDelay);
+    this.logger.log(`Process ${process.name} (${process.id}) restarted successfully.`);
+    return process;
   }
 }

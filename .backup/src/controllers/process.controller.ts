@@ -17,9 +17,13 @@ export class ProcessController {
   }
 
   @Post(':id/stop')
-  @HttpCode(200) // This decorator sets the status code to 200
-  stopProcess(@Param('id') id: string) {
-    return this.processManagerService.stopProcess(id);
+  @HttpCode(200)
+  async stopProcess(@Param('id') id: string) {
+    const stoppedProcess = await this.processManagerService.stopProcess(id);
+    if (stoppedProcess.status !== 'stopped') {
+      throw new InternalServerErrorException('Failed to stop the process');
+    }
+    return stoppedProcess;
   }
 
   @Get(':id')

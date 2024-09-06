@@ -106,7 +106,7 @@ export class ProcessManagerService implements OnModuleInit {
     return this.processRepository.save(newProcess);
   }
 
-  async stopProcess(id: string) {
+  async stopProcess(id: string): Promise<Process> {
     const process = await this.processRepository.findOne({
       where: {
         id
@@ -114,7 +114,10 @@ export class ProcessManagerService implements OnModuleInit {
     });
     if (process) {
       process.stopProcess();
-      return this.processRepository.save(process);
+      process.status = 'stopped';
+      process.pid = undefined;
+      await this.processRepository.save(process);
+      return process;
     }
     throw new NotFoundException(`Process with id ${id} not found`);
   }
