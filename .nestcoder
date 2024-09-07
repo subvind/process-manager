@@ -272,433 +272,8 @@ export function dot(a: V3, b: V3): number {
 
 You will now be given the actual INPUT you must work with.
 
-<FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ChildProcess } from 'child_process';
-import { Process as ProcessInterface } from '../interfaces/process.interface';
-
-@Entity()
-export class Process implements ProcessInterface {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  name: string;
-
-  @Column()
-  command: string;
-
-  @Column({
-    type: 'varchar',
-    length: 10,
-    default: 'stopped'
-  })
-  status: 'running' | 'stopped' | 'crashed';
-
-  @Column({ nullable: true })
-  pid?: number;
-
-  @Column({ default: 0 })
-  restartAttempts: number;
-
-  @Column({ type: 'datetime', nullable: true })
-  lastRestart?: Date;
-
-  @Column({ type: 'float', default: 0 })
-  cpu: number;
-
-  @Column({ type: 'float', default: 0 })
-  memory: number;
-
-  @Column({ type: 'float', default: 1024 })
-  maxMemory: number;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  private _process?: ChildProcess;
-
-  get process(): ChildProcess | undefined {
-    return this._process;
-  }
-
-  set process(proc: ChildProcess | undefined) {
-    this._process = proc;
-    if (proc) {
-      this.pid = proc.pid;
-      this.status = 'running';
-    } else {
-      this.pid = undefined;
-      this.status = 'stopped';
-    }
-  }
-
-  kill(signal: NodeJS.Signals): void {
-    if (this.pid) {
-      console.log('kill', this.pid, signal)
-      process.kill(this.pid, signal);
-    }
-  }
-
-  on(event: string, listener: (...args: any[]) => void): void {
-    if (this._process) {
-      this._process.on(event, listener);
-    }
-  }
-
-  // Method to start the process
-  startProcess(spawn: Function): void {
-    if (this.status !== 'running') {
-      const childProcess = spawn(this.command.split(' ')[0], this.command.split(' ').slice(1), {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        detached: true,
-      });
-      this.process = childProcess;
-    }
-  }
-
-  // Method to stop the process
-  stopProcess(): void {
-    if (this.status === 'running') {
-      this.kill('SIGTERM');
-      // this._process = undefined;
-      this.status = 'stopped';
-      // this.pid = undefined;
-    }
-  }
-}
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
-import { ChildProcess } from 'child_process';
-
-export interface Process {
-  id?: string;
-  name: string;
-  command: string;
-  status: 'running' | 'stopped' | 'crashed';
-  pid?: number;
-  process?: ChildProcess;
-  restartAttempts: number;
-  lastRestart?: Date;
-  cpu: number;
-  memory: number;
-  kill: (signal: NodeJS.Signals) => void;
-  on: (event: string, listener: (...args: any[]) => void) => void;
-}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/logger/custom-logger.ts">
-import { ConsoleLogger, Injectable, Inject } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-
-@Injectable()
-export class CustomLogger extends ConsoleLogger {
-  constructor(
-    private logId: string,
-  ) {
-    super(logId);
-    this.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
-  }
-
-  log(message: string, context?: string) {
-    this.printMessage(message, 'log', context);
-    // this.emitLogEvent('log', message);
-  }
-
-  warn(message: string, context?: string) {
-    this.printMessage(message, 'warn', context);
-    // this.emitLogEvent('warn', message);
-  }
-
-  error(message: string, trace?: string, context?: string) {
-    this.printMessage(message, 'error', context);
-    // this.emitLogEvent('error', message);
-    if (trace) {
-      this.printMessage(trace, 'error', context);
-    }
-  }
-
-  debug(message: string, context?: string) {
-    this.printMessage(message, 'debug', context);
-  }
-
-  verbose(message: string, context?: string) {
-    this.printMessage(message, 'verbose', context);
-  }
-
-  private printMessage(message: string, logLevel: string, context?: string) {
-    const output = context ? `[${context}] ${message}` : message;
-    console.log(`[${this.getNow()}] [${logLevel.toUpperCase()}] [${this.logId}] ${output}`);
-  }
-
-  private getNow(): string {
-    return new Date().toISOString();
-  }
-
-  static write_to_file(message: string) {
-    const logFile = path.join(process.cwd(), 'start:dev.stdout.txt');
-    fs.appendFile(logFile, message, (err) => {
-      if (err) {
-        console.error('Failed to write to log file:', err);
-      }
-    });
-  }
-
-  static clearSTDOUT() {
-    const logFile = path.join(process.cwd(), 'start:dev.stdout.txt');
-    try {
-      fs.writeFileSync(logFile, '');
-      console.log(`Log file cleared at ${logFile}`);
-    } catch (error) {
-      console.error('Failed to clear log file:', error);
-    }
-  }
-}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) stop process test');
-
-  console.log('Testing: should be able to stop a running process over api');
-
-  try {
-    // First, get all running processes
-    const listResponse = await request(API_URL).get('/processes');
-    
-    if (listResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${listResponse.status}`);
-    }
-
-    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
-
-    if (runningProcesses.length === 0) {
-      throw new Error('No running processes found to stop');
-    }
-
-    const processToStop = runningProcesses[0];
-
-    console.log(`Attempting to stop process with id: ${processToStop.id}`);
-
-    const stopResponse = await request(API_URL)
-      .post(`/processes/${processToStop.id}/stop`);
-
-    if (stopResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${stopResponse.status}`);
-    }
-
-    console.log('Stop process response:', stopResponse.body);
-
-    if (stopResponse.body.status !== 'stopped') {
-      throw new Error(`Expected status to be 'stopped', got '${stopResponse.body.status}'`);
-    }
-
-    console.log('Waiting for 2 seconds to ensure the process has stopped');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    console.log('Verifying that the process is stopped');
-    const processInfoResponse = await request(API_URL).get(`/processes/${processToStop.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'stopped') {
-      throw new Error(`Expected process status to be 'stopped', got '${processInfo.status}'`);
-    }
-
-    console.log('Test passed successfully');
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test/restart-process.test.ts">
-import * as request from 'supertest';
-
-const API_URL = 'http://localhost:9393';
-
-async function runTests() {
-  console.log('Starting ProcessController (e2e) restart process test');
-
-  console.log('Testing: should be able to restart a running process over api');
-
-  try {
-    // First, get all running processes
-    const listResponse = await request(API_URL).get('/processes');
-    
-    if (listResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${listResponse.status}`);
-    }
-
-    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
-
-    if (runningProcesses.length === 0) {
-      throw new Error('No running processes found to restart');
-    }
-
-    const processToRestart = runningProcesses[0];
-
-    console.log(`Attempting to restart process with id: ${processToRestart.id}`);
-
-    const restartResponse = await request(API_URL)
-      .post(`/processes/${processToRestart.id}/restart`);
-
-    if (restartResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${restartResponse.status}`);
-    }
-
-    console.log('Restart process response:', restartResponse.body);
-
-    if (restartResponse.body.status !== 'running') {
-      throw new Error(`Expected status to be 'running', got '${restartResponse.body.status}'`);
-    }
-
-    console.log('Waiting for 10 seconds to ensure the process has restarted and stabilized');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    console.log('Verifying that the process is running');
-    const processInfoResponse = await request(API_URL).get(`/processes/${processToRestart.id}`);
-    
-    if (processInfoResponse.status !== 200) {
-      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
-    }
-
-    const processInfo = processInfoResponse.body;
-    
-    if (processInfo.status !== 'running') {
-      console.warn(`Process status is '${processInfo.status}'. This may be due to the process crashing repeatedly.`);
-    }
-
-    if (processInfo.restartAttempts <= processToRestart.restartAttempts) {
-      throw new Error(`Expected restart attempts to increase, but it didn't`);
-    }
-
-    console.log('Test completed. Final process status:', processInfo.status);
-  } catch (error) {
-    console.error('Test failed:', error.message);
-    process.exit(1);
-  }
-}
-
-runTests().catch(error => {
-  console.error('An unexpected error occurred:', error);
-  process.exit(1);
-});
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
-Starting ProcessController (e2e) stop process test
-Testing: should be able to stop a running process over api
-Attempting to stop process with id: 93e7cd01-e02b-4783-a9ea-ee85420709fd
-Test failed: socket hang up
-
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/test:restart-process.stdout.txt">
-Starting ProcessController (e2e) restart process test
-Testing: should be able to restart a running process over api
-Attempting to restart process with id: 8a32730c-c31c-4b62-9eb9-88fa09ebb0a3
-Restart process response: {
-  id: '8a32730c-c31c-4b62-9eb9-88fa09ebb0a3',
-  name: 'long-running-process',
-  command: 'node -e "\n' +
-    "    console.log('Long-running process started');\n" +
-    '    let counter = 0;\n' +
-    '    setInterval(() => {\n' +
-    "      console.log('Still running... Counter:', counter++);\n" +
-    '    }, 1000);\n' +
-    '  "',
-  status: 'running',
-  pid: 1449649,
-  restartAttempts: 1,
-  lastRestart: '2024-09-06T22:21:30.887Z',
-  cpu: 0,
-  memory: 52.546875,
-  maxMemory: 1024,
-  createdAt: '2024-09-06T22:20:56.000Z',
-  updatedAt: '2024-09-06T22:21:06.000Z',
-  _process: {
-    _events: {},
-    _eventsCount: 1,
-    _closesNeeded: 3,
-    _closesGot: 0,
-    connected: false,
-    signalCode: null,
-    exitCode: null,
-    killed: false,
-    spawnfile: '/bin/sh',
-    _handle: { pid: 1449649 },
-    spawnargs: [
-      '/bin/sh',
-      '-c',
-      'node -e "\n' +
-        "    console.log('Long-running process started');\n" +
-        '    let counter = 0;\n' +
-        '    setInterval(() => {\n' +
-        "      console.log('Still running... Counter:', counter++);\n" +
-        '    }, 1000);\n' +
-        '  "'
-    ],
-    pid: 1449649,
-    stdin: null,
-    stdout: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 3,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stderr: {
-      connecting: false,
-      _hadError: false,
-      _parent: null,
-      _host: null,
-      _closeAfterHandlingError: false,
-      _events: {},
-      _readableState: [Object],
-      _writableState: [Object],
-      allowHalfOpen: false,
-      _eventsCount: 3,
-      _sockname: null,
-      _pendingData: null,
-      _pendingEncoding: '',
-      server: null,
-      _server: null
-    },
-    stdio: [ null, [Object], [Object] ]
-  }
-}
-Waiting for 10 seconds to ensure the process has restarted and stabilized
-Verifying that the process is running
-Test completed. Final process status: running
-
-</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
+import { Module, Controller, Get, Post, Delete, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
 import { ProcessManagerService } from '../services/process-manager.service';
 import { ScalingRule } from '../interfaces/scaling-rule.interface';
 
@@ -750,58 +325,19 @@ export class ProcessController {
     }
     return restartedProcess;
   }
+
+  @Delete(':id')
+  @HttpCode(200)
+  async deleteProcess(@Param('id') id: string) {
+    const deletedProcess = await this.processManagerService.deleteProcess(id);
+    if (!deletedProcess) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+    return { message: `Process ${deletedProcess.name} (${id}) has been deleted` };
+  }
 }
 </FILE>
-<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProcessController } from './controllers/process.controller';
-import { ProcessManagerService } from './services/process-manager.service';
-import { Process } from './entities/process.entity';
-import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
-        entities: [Process, ScalingRule],
-        synchronize: true, // Be cautious with this in production
-      }),
-      inject: [ConfigService],
-    }),
-    TypeOrmModule.forFeature([Process, ScalingRule]),
-  ],
-  controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
-})
-export class AppModule {}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/main.ts">
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
-
-import { CustomLogger } from './logger/custom-logger';
-
-export async function bootstrap(): Promise<any> {
-  const logger = new CustomLogger('Bootstrap');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
-  
-  await app.listen(9393);
-}
-bootstrap();
-
-</FILE>
-<FILE path="src/services/process-manager.service.ts" TARGET>
+<FILE path="/home/travis/Projects/process-manager/src/services/process-manager.service.ts">
 import { NotFoundException, Injectable, OnModuleInit } from '@nestjs/common';
 import { ChildProcess, spawn } from 'child_process';
 import * as pidusage from 'pidusage';
@@ -944,29 +480,6 @@ export class ProcessManagerService implements OnModuleInit {
       if (process.pid) {
         try {
           process.stopProcess();
-          
-          // Wait for the process to exit
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              this.logger.warn(`Process ${process.name} did not exit within 5 seconds, forcing kill with SIGKILL`);
-              process.kill('SIGKILL');
-              resolve();
-            }, 5000);
-
-            process.on('exit', () => {
-              clearTimeout(timeout);
-              resolve();
-            });
-          });
-
-          // Double-check if the process is still running
-          try {
-            process.kill('SIGKILL');
-            this.logger.warn(`Process ${process.name} is still running after kill attempt`);
-          } catch (error) {
-            // Process is not running
-            this.logger.log(`Process ${process.name} has been successfully terminated`);
-          }
         } catch (error) {
           this.logger.error(`Failed to kill process ${process.name} (PID: ${process.pid}): ${error.message}`);
         }
@@ -1060,26 +573,38 @@ export class ProcessManagerService implements OnModuleInit {
     if (process.process) {
       process.process.on('exit', async (code) => {
         this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
-        if (code !== 0 && process.status !== 'stopped') {
-          this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
-          process.status = 'crashed';
-        } else {
-          process.status = 'stopped';
+        
+        // Fetch the latest process state from the database
+        const currentProcess = await this.processRepository.findOne({ where: { id: process.id } });
+        
+        if (!currentProcess) {
+          this.logger.warn(`Process ${process.name} (${process.id}) not found in database after exit`);
+          return;
         }
-        process.pid = undefined;
-        await this.processRepository.save(process);
 
-        if (process.status === 'crashed') {
-          if (process.restartAttempts < 3) {
-            this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
+        if (currentProcess.status === 'stopped') {
+          this.logger.log(`Process ${process.name} (${process.id}) was intentionally stopped. Not restarting.`);
+        } else if (code !== 0) {
+          this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
+          currentProcess.status = 'crashed';
+        } else {
+          currentProcess.status = 'stopped';
+        }
+        
+        currentProcess.pid = undefined;
+        await this.processRepository.save(currentProcess);
+
+        if (currentProcess.status === 'crashed') {
+          if (currentProcess.restartAttempts < 3) {
+            this.logger.log(`Attempting to restart crashed process ${currentProcess.name} (${currentProcess.id})`);
             try {
               await new Promise(resolve => setTimeout(resolve, 5000));
-              await this.restartProcess(process.id);
+              await this.restartProcess(currentProcess.id);
             } catch (error) {
-              this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+              this.logger.error(`Failed to restart crashed process ${currentProcess.name} (${currentProcess.id}): ${error.message}`);
             }
           } else {
-            this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
+            this.logger.warn(`Process ${currentProcess.name} (${currentProcess.id}) has crashed ${currentProcess.restartAttempts} times. Stopping automatic restarts.`);
           }
         }
       });
@@ -1093,8 +618,1828 @@ export class ProcessManagerService implements OnModuleInit {
       });
     }
   }
+
+  async deleteProcess(id: string): Promise<Process | null> {
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      return null;
+    }
+
+    this.logger.log(`Attempting to delete process ${process.name} (${process.id})`);
+
+    if (process.status === 'running') {
+      await this.stopProcess(id);
+    }
+
+    await this.processRepository.remove(process);
+
+    this.logger.log(`Process ${process.name} (${process.id}) has been deleted`);
+
+    return process;
+  }
 }
 </FILE>
+<FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { ChildProcess } from 'child_process';
+import { Process as ProcessInterface } from '../interfaces/process.interface';
+
+@Entity()
+export class Process implements ProcessInterface {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  command: string;
+
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: 'stopped'
+  })
+  status: 'running' | 'stopped' | 'crashed';
+
+  @Column({ nullable: true })
+  pid?: number;
+
+  @Column({ default: 0 })
+  restartAttempts: number;
+
+  @Column({ type: 'datetime', nullable: true })
+  lastRestart?: Date;
+
+  @Column({ type: 'float', default: 0 })
+  cpu: number;
+
+  @Column({ type: 'float', default: 0 })
+  memory: number;
+
+  @Column({ type: 'float', default: 1024 })
+  maxMemory: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  private _process?: ChildProcess;
+
+  get process(): ChildProcess | undefined {
+    return this._process;
+  }
+
+  set process(proc: ChildProcess | undefined) {
+    this._process = proc;
+    if (proc) {
+      this.pid = proc.pid;
+      this.status = 'running';
+    } else {
+      this.pid = undefined;
+      this.status = 'stopped';
+    }
+  }
+
+  kill(signal: NodeJS.Signals): void {
+    if (this.pid) {
+      console.log('kill', this.pid, signal)
+      process.kill(this.pid, signal);
+    }
+  }
+
+  on(event: string, listener: (...args: any[]) => void): void {
+    if (this._process) {
+      this._process.on(event, listener);
+    }
+  }
+
+  // Method to start the process
+  startProcess(spawn: Function): void {
+    if (this.status !== 'running') {
+      const childProcess = spawn(this.command.split(' ')[0], this.command.split(' ').slice(1), {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+      this.process = childProcess;
+    }
+  }
+
+  // Method to stop the process
+  stopProcess(): void {
+    if (this.status === 'running') {
+      this.kill('SIGTERM');
+      this._process = undefined;
+      this.status = 'stopped';
+      this.pid = undefined;
+    }
+  }
+}
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess } from 'child_process';
+
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
+  kill: (signal: NodeJS.Signals) => void;
+  on: (event: string, listener: (...args: any[]) => void) => void;
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/logger/custom-logger.ts">
+import { ConsoleLogger, Injectable, Inject } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+
+@Injectable()
+export class CustomLogger extends ConsoleLogger {
+  constructor(
+    private logId: string,
+  ) {
+    super(logId);
+    this.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
+  }
+
+  log(message: string, context?: string) {
+    this.printMessage(message, 'log', context);
+    // this.emitLogEvent('log', message);
+  }
+
+  warn(message: string, context?: string) {
+    this.printMessage(message, 'warn', context);
+    // this.emitLogEvent('warn', message);
+  }
+
+  error(message: string, trace?: string, context?: string) {
+    this.printMessage(message, 'error', context);
+    // this.emitLogEvent('error', message);
+    if (trace) {
+      this.printMessage(trace, 'error', context);
+    }
+  }
+
+  debug(message: string, context?: string) {
+    this.printMessage(message, 'debug', context);
+  }
+
+  verbose(message: string, context?: string) {
+    this.printMessage(message, 'verbose', context);
+  }
+
+  private printMessage(message: string, logLevel: string, context?: string) {
+    const output = context ? `[${context}] ${message}` : message;
+    console.log(`[${this.getNow()}] [${logLevel.toUpperCase()}] [${this.logId}] ${output}`);
+  }
+
+  private getNow(): string {
+    return new Date().toISOString();
+  }
+
+  static write_to_file(message: string) {
+    const logFile = path.join(process.cwd(), 'start:dev.stdout.txt');
+    fs.appendFile(logFile, message, (err) => {
+      if (err) {
+        console.error('Failed to write to log file:', err);
+      }
+    });
+  }
+
+  static clearSTDOUT() {
+    const logFile = path.join(process.cwd(), 'start:dev.stdout.txt');
+    try {
+      fs.writeFileSync(logFile, '');
+      console.log(`Log file cleared at ${logFile}`);
+    } catch (error) {
+      console.error('Failed to clear log file:', error);
+    }
+  }
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/start-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) tests');
+
+  console.log('Testing: should be able to start a long-running node.js process over api');
+  const longRunningScript = `
+    console.log('Long-running process started');
+    let counter = 0;
+    setInterval(() => {
+      console.log('Still running... Counter:', counter++);
+    }, 1000);
+  `;
+
+  try {
+    const response = await request(API_URL)
+      .post('/processes')
+      .send({
+        name: 'long-running-process',
+        command: `node -e "${longRunningScript}"`,
+      });
+
+    if (response.status !== 201) {
+      throw new Error(`Expected status 201, got ${response.status}`);
+    }
+
+    console.log('Response body:', response.body);
+
+    if (!response.body.id) {
+      throw new Error('Response body should have an id property');
+    }
+
+    if (response.body.name !== 'long-running-process') {
+      throw new Error(`Expected name to be 'long-running-process', got '${response.body.name}'`);
+    }
+
+    if (response.body.status !== 'running') {
+      throw new Error(`Expected status to be 'running', got '${response.body.status}'`);
+    }
+
+    console.log('Waiting for 10 seconds to ensure the process has started and is stable');
+    await new Promise(resolve => setTimeout(resolve, 10000));
+
+    console.log('Verifying that the process is still running');
+    const processInfoResponse = await request(API_URL).get(`/processes/${response.body.id}`);
+    
+    if (processInfoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
+    }
+
+    const processInfo = processInfoResponse.body;
+    
+    if (processInfo.status !== 'running') {
+      throw new Error(`Expected process status to be 'running', got '${processInfo.status}'`);
+    }
+
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) stop process test');
+
+  console.log('Testing: should be able to stop a running process over api');
+
+  try {
+    // First, get all running processes
+    const listResponse = await request(API_URL).get('/processes');
+    
+    if (listResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${listResponse.status}`);
+    }
+
+    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
+
+    if (runningProcesses.length === 0) {
+      throw new Error('No running processes found to stop');
+    }
+
+    const processToStop = runningProcesses[0];
+
+    console.log(`Attempting to stop process with id: ${processToStop.id}`);
+
+    const stopResponse = await request(API_URL)
+      .post(`/processes/${processToStop.id}/stop`);
+
+    if (stopResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${stopResponse.status}`);
+    }
+
+    console.log('Stop process response:', stopResponse.body);
+
+    if (stopResponse.body.status !== 'stopped') {
+      throw new Error(`Expected status to be 'stopped', got '${stopResponse.body.status}'`);
+    }
+
+    console.log('Waiting for 2 seconds to ensure the process has stopped');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    console.log('Verifying that the process is stopped');
+    const processInfoResponse = await request(API_URL).get(`/processes/${processToStop.id}`);
+    
+    if (processInfoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
+    }
+
+    const processInfo = processInfoResponse.body;
+    
+    if (processInfo.status !== 'stopped') {
+      throw new Error(`Expected process status to be 'stopped', got '${processInfo.status}'`);
+    }
+
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/list-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) list processes test');
+
+  console.log('Testing: should be able to list all processes over api');
+
+  try {
+    const response = await request(API_URL).get('/processes');
+
+    console.log('Response status:', response.status);
+    console.log('Response body:', response.body);
+
+    if (response.status !== 200) {
+      throw new Error(`Expected status 200, got ${response.status}`);
+    }
+
+    if (!Array.isArray(response.body)) {
+      throw new Error('Response body should be an array');
+    }
+
+    console.log(`Successfully listed ${response.body.length} processes`);
+
+    // Check if each process in the list has the expected properties
+    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
+    for (const process of response.body) {
+      for (const field of expectedFields) {
+        if (!(field in process)) {
+          throw new Error(`Expected field '${field}' not found in process ${process.id}`);
+        }
+      }
+    }
+
+    console.log('All processes have the expected fields');
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    if (error.response) {
+      console.error('Error response:', error.response.body);
+    }
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/info-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) info process test');
+
+  console.log('Testing: should be able to get info about a process over api');
+
+  try {
+    // First, get all processes
+    const listResponse = await request(API_URL).get('/processes');
+    
+    if (listResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${listResponse.status}`);
+    }
+
+    if (listResponse.body.length === 0) {
+      throw new Error('No processes found to get info');
+    }
+
+    const processToCheck = listResponse.body[0];
+
+    console.log(`Attempting to get info for process with id: ${processToCheck.id}`);
+
+    const infoResponse = await request(API_URL).get(`/processes/${processToCheck.id}`);
+
+    if (infoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${infoResponse.status}`);
+    }
+
+    console.log('Process info response:', infoResponse.body);
+
+    // Check if all expected fields are present
+    const expectedFields = ['id', 'name', 'command', 'status', 'pid', 'cpu', 'memory', 'maxMemory', 'createdAt', 'updatedAt'];
+    for (const field of expectedFields) {
+      if (!(field in infoResponse.body)) {
+        throw new Error(`Expected field '${field}' not found in process info`);
+      }
+    }
+
+    // Check if the returned info matches the process we queried
+    if (infoResponse.body.id !== processToCheck.id) {
+      throw new Error(`Returned process id ${infoResponse.body.id} does not match requested id ${processToCheck.id}`);
+    }
+
+    console.log('Test passed successfully');
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test/restart-process.test.ts">
+import * as request from 'supertest';
+
+const API_URL = 'http://localhost:9393';
+
+async function runTests() {
+  console.log('Starting ProcessController (e2e) restart process test');
+
+  console.log('Testing: should be able to restart a running process over api');
+
+  try {
+    // First, get all running processes
+    const listResponse = await request(API_URL).get('/processes');
+    
+    if (listResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${listResponse.status}`);
+    }
+
+    const runningProcesses = listResponse.body.filter(process => process.status === 'running');
+
+    if (runningProcesses.length === 0) {
+      throw new Error('No running processes found to restart');
+    }
+
+    const processToRestart = runningProcesses[0];
+
+    console.log(`Attempting to restart process with id: ${processToRestart.id}`);
+
+    const restartResponse = await request(API_URL)
+      .post(`/processes/${processToRestart.id}/restart`);
+
+    if (restartResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${restartResponse.status}`);
+    }
+
+    console.log('Restart process response:', restartResponse.body);
+
+    if (restartResponse.body.status !== 'running') {
+      throw new Error(`Expected status to be 'running', got '${restartResponse.body.status}'`);
+    }
+
+    console.log('Waiting for 10 seconds to ensure the process has restarted and stabilized');
+    await new Promise(resolve => setTimeout(resolve, 10000));
+
+    console.log('Verifying that the process is running');
+    const processInfoResponse = await request(API_URL).get(`/processes/${processToRestart.id}`);
+    
+    if (processInfoResponse.status !== 200) {
+      throw new Error(`Expected status 200, got ${processInfoResponse.status}`);
+    }
+
+    const processInfo = processInfoResponse.body;
+    
+    if (processInfo.status !== 'running') {
+      console.warn(`Process status is '${processInfo.status}'. This may be due to the process crashing repeatedly.`);
+    }
+
+    if (processInfo.restartAttempts <= processToRestart.restartAttempts) {
+      throw new Error(`Expected restart attempts to increase, but it didn't`);
+    }
+
+    console.log('Test completed. Final process status:', processInfo.status);
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+runTests().catch(error => {
+  console.error('An unexpected error occurred:', error);
+  process.exit(1);
+});
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+import { CustomLogger } from './logger/custom-logger';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [
+    ProcessManagerService,
+    CustomLogger
+  ]
+})
+export class AppModule {}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:start-process.stdout.txt">
+Starting ProcessController (e2e) tests
+Testing: should be able to start a long-running node.js process over api
+Response body: {
+  name: 'long-running-process',
+  command: 'node -e "\n' +
+    "    console.log('Long-running process started');\n" +
+    '    let counter = 0;\n' +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running... Counter:', counter++);\n" +
+    '    }, 1000);\n' +
+    '  "',
+  _process: {
+    _events: {},
+    _eventsCount: 1,
+    _closesNeeded: 3,
+    _closesGot: 0,
+    connected: false,
+    signalCode: null,
+    exitCode: null,
+    killed: false,
+    spawnfile: '/bin/sh',
+    _handle: { pid: 1535384 },
+    spawnargs: [
+      '/bin/sh',
+      '-c',
+      'node -e "\n' +
+        "    console.log('Long-running process started');\n" +
+        '    let counter = 0;\n' +
+        '    setInterval(() => {\n' +
+        "      console.log('Still running... Counter:', counter++);\n" +
+        '    }, 1000);\n' +
+        '  "'
+    ],
+    pid: 1535384,
+    stdin: null,
+    stdout: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stderr: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stdio: [ null, [Object], [Object] ]
+  },
+  pid: 1535384,
+  status: 'running',
+  lastRestart: null,
+  id: '5bda8ccd-2e2d-453b-bb80-1bad206453ac',
+  restartAttempts: 0,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-07T00:35:08.000Z',
+  updatedAt: '2024-09-07T00:35:08.000Z'
+}
+Waiting for 10 seconds to ensure the process has started and is stable
+Verifying that the process is still running
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
+Starting ProcessController (e2e) stop process test
+Testing: should be able to stop a running process over api
+Attempting to stop process with id: 5bda8ccd-2e2d-453b-bb80-1bad206453ac
+Stop process response: {
+  id: '5bda8ccd-2e2d-453b-bb80-1bad206453ac',
+  name: 'long-running-process',
+  command: 'node -e "\n' +
+    "    console.log('Long-running process started');\n" +
+    '    let counter = 0;\n' +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running... Counter:', counter++);\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'stopped',
+  pid: null,
+  restartAttempts: 0,
+  lastRestart: null,
+  cpu: 0,
+  memory: 52.5,
+  maxMemory: 1024,
+  createdAt: '2024-09-07T00:35:08.000Z',
+  updatedAt: '2024-09-07T00:35:21.000Z'
+}
+Waiting for 2 seconds to ensure the process has stopped
+Verifying that the process is stopped
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:list-process.stdout.txt">
+Starting ProcessController (e2e) list processes test
+Testing: should be able to list all processes over api
+Response status: 200
+Response body: [
+  {
+    id: '1bfe5e6f-1289-4a44-881a-294846a36a84',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1129547,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T19:55:49.000Z',
+    updatedAt: '2024-09-06T19:59:24.000Z'
+  },
+  {
+    id: 'a68ef4b3-0eae-4582-a080-468a4117037e',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1132716,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:00:06.000Z',
+    updatedAt: '2024-09-06T20:05:12.000Z'
+  },
+  {
+    id: '7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1137280,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:06:59.000Z',
+    updatedAt: '2024-09-06T20:07:05.000Z'
+  },
+  {
+    id: '6aae70f8-9436-4ccf-af57-dc79b9a11d1b',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1156401,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T20:45:57.000Z',
+    updatedAt: '2024-09-06T21:05:17.000Z'
+  },
+  {
+    id: 'e3a1fa7f-2f66-4290-be5e-f0d6a41b0ac0',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1165582,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:00:22.000Z',
+    updatedAt: '2024-09-06T21:05:24.000Z'
+  },
+  {
+    id: '9b7fcd22-6ca6-4218-afa1-079fc75c039a',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1175962,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T21:15:42.133Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:15:36.000Z',
+    updatedAt: '2024-09-06T21:15:42.000Z'
+  },
+  {
+    id: '750c32f6-00a8-46f4-b7e4-bb67196ffbdc',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1413794,
+    restartAttempts: 22847,
+    lastRestart: '2024-09-06T21:30:54.610Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:19:52.000Z',
+    updatedAt: '2024-09-06T21:30:54.000Z'
+  },
+  {
+    id: 'cac917c7-03a1-4198-b8af-5b99654f5528',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1418763,
+    restartAttempts: 302,
+    lastRestart: '2024-09-06T21:33:33.386Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:33:13.000Z',
+    updatedAt: '2024-09-06T21:41:11.000Z'
+  },
+  {
+    id: 'fbdfccf7-8673-495a-83bf-504f1299e6cb',
+    name: 'hello-world',
+    command: 'node -e "\n' +
+      "    console.log('Hello, World!');\n" +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running...');\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1424263,
+    restartAttempts: 3,
+    lastRestart: '2024-09-06T21:41:53.603Z',
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T21:41:35.000Z',
+    updatedAt: '2024-09-06T21:41:53.000Z'
+  },
+  {
+    id: '96fd9ab2-402c-4099-9776-9442e9d06e69',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1435587,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:00:16.000Z',
+    updatedAt: '2024-09-06T22:00:16.000Z'
+  },
+  {
+    id: '8575992f-2608-4698-8da8-fbf431920897',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1438865,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:05:19.086Z',
+    cpu: 0,
+    memory: 52.53125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:04:37.000Z',
+    updatedAt: '2024-09-06T22:05:19.000Z'
+  },
+  {
+    id: 'f6713908-1ea4-4107-8274-cb4f80e418a8',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1440052,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:07:04.143Z',
+    cpu: 0,
+    memory: 53.29296875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:06:49.000Z',
+    updatedAt: '2024-09-06T22:11:09.000Z'
+  },
+  {
+    id: '8b05f111-2e21-447e-b99e-76154d3e4ccb',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1442958,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:11:26.167Z',
+    cpu: 0,
+    memory: 53.10546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:10:59.000Z',
+    updatedAt: '2024-09-06T22:14:28.000Z'
+  },
+  {
+    id: '17746e36-2c0c-436f-a857-b0efbf875321',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1445192,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:14:39.401Z',
+    cpu: 0.1,
+    memory: 52.546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:14:18.000Z',
+    updatedAt: '2024-09-06T22:15:13.000Z'
+  },
+  {
+    id: '68bcbec8-241c-47cc-9f29-925807cf6806',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1447206,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:17:32.221Z',
+    cpu: 0,
+    memory: 53.05859375,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:17:16.000Z',
+    updatedAt: '2024-09-06T22:21:06.000Z'
+  },
+  {
+    id: '8a32730c-c31c-4b62-9eb9-88fa09ebb0a3',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1449649,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T22:21:30.887Z',
+    cpu: 0,
+    memory: 52.7265625,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:20:56.000Z',
+    updatedAt: '2024-09-06T22:23:23.000Z'
+  },
+  {
+    id: 'a78d0bf9-04ab-4dbb-8368-f48bb4cf6f02',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1450836,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.5625,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:23:13.000Z',
+    updatedAt: '2024-09-06T22:23:28.000Z'
+  },
+  {
+    id: 'fa7be617-98ef-4d17-bc74-d4466588ce2e',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1451700,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.578125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:24:16.000Z',
+    updatedAt: '2024-09-06T22:24:34.000Z'
+  },
+  {
+    id: '3bec8370-5225-4353-82a7-aef274044065',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1452966,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.5390625,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:26:07.000Z',
+    updatedAt: '2024-09-06T22:26:24.000Z'
+  },
+  {
+    id: 'a4ea751c-1e95-4a05-80ab-89197a5d5bda',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1455789,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.10010010010010009,
+    memory: 52.4921875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:30:23.000Z',
+    updatedAt: '2024-09-06T22:30:35.000Z'
+  },
+  {
+    id: 'c55cac46-dbac-4d87-a7f4-b9443e92c57b',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1456818,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.1,
+    memory: 55.19921875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T22:31:49.000Z',
+    updatedAt: '2024-09-06T23:05:00.000Z'
+  },
+  {
+    id: '6589d468-6475-4737-aa6c-a2e847b020f3',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1478054,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.5,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:04:50.000Z',
+    updatedAt: '2024-09-06T23:05:00.000Z'
+  },
+  {
+    id: '0a0bf082-cdf1-4d60-b72c-bb9d90061675',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1483548,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:13:25.000Z',
+    updatedAt: '2024-09-06T23:13:25.000Z'
+  },
+  {
+    id: '47afa79f-1fa9-4187-a60b-f2ab297deba9',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1484504,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.1,
+    memory: 53.12890625,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:14:48.000Z',
+    updatedAt: '2024-09-06T23:23:09.000Z'
+  },
+  {
+    id: '4da1de4c-bf5b-4764-920e-095943c71b20',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1489605,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:22:59.000Z',
+    updatedAt: '2024-09-06T23:22:59.000Z'
+  },
+  {
+    id: '9aa7d91d-2312-442b-a6e1-0dc970916bd9',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1490946,
+    restartAttempts: 1,
+    lastRestart: '2024-09-06T23:25:01.294Z',
+    cpu: 0,
+    memory: 53.109375,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:24:36.000Z',
+    updatedAt: '2024-09-06T23:46:18.000Z'
+  },
+  {
+    id: 'e93acbc6-50d8-460f-a429-96d1ed7335d1',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1503156,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:46:08.000Z',
+    updatedAt: '2024-09-06T23:48:06.000Z'
+  },
+  {
+    id: 'ab085664-2af6-4f87-b580-f45b4b87eb77',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1504306,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:47:56.000Z',
+    updatedAt: '2024-09-06T23:48:35.000Z'
+  },
+  {
+    id: '1887e604-7a47-4422-81d4-acdb2f4471b4',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1504738,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.52734375,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:48:25.000Z',
+    updatedAt: '2024-09-06T23:49:19.000Z'
+  },
+  {
+    id: '8af9c636-9afd-4d6f-89d6-c12306f19a11',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1505183,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.54296875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:49:09.000Z',
+    updatedAt: '2024-09-06T23:50:46.000Z'
+  },
+  {
+    id: '4a78eede-aa6b-4a6d-a1df-df851a53ddd7',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1506129,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.52734375,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:50:36.000Z',
+    updatedAt: '2024-09-06T23:52:04.000Z'
+  },
+  {
+    id: '4d6d1a30-49a8-4935-9c48-6c0f7bc81b63',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1506945,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.5703125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:51:54.000Z',
+    updatedAt: '2024-09-06T23:52:16.000Z'
+  },
+  {
+    id: '60714785-9c50-4312-8c0b-ed730289ff7c',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1507150,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.4453125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:52:13.000Z',
+    updatedAt: '2024-09-06T23:52:42.000Z'
+  },
+  {
+    id: 'd1458dad-dcd2-4720-ab43-f27fe42eeef4',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1507494,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.67578125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:52:37.000Z',
+    updatedAt: '2024-09-06T23:54:12.000Z'
+  },
+  {
+    id: 'ac006d95-b08e-44d5-978b-3fe9e49949aa',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1508492,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.1,
+    memory: 52.54296875,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:54:06.000Z',
+    updatedAt: '2024-09-06T23:54:46.000Z'
+  },
+  {
+    id: 'b3766c56-62e6-406b-81e3-bf2016c585de',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1508919,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.578125,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:54:36.000Z',
+    updatedAt: '2024-09-06T23:54:56.000Z'
+  },
+  {
+    id: 'fd4100c8-3baf-405a-a228-07f344905165',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1509120,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:54:53.000Z',
+    updatedAt: '2024-09-06T23:54:53.000Z'
+  },
+  {
+    id: '93e7cd01-e02b-4783-a9ea-ee85420709fd',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1510310,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 0,
+    maxMemory: 1024,
+    createdAt: '2024-09-06T23:56:41.000Z',
+    updatedAt: '2024-09-06T23:56:41.000Z'
+  },
+  {
+    id: '3a68b3cc-bcf0-443d-83b2-20f079494d9e',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1514767,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.38671875,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:03:29.000Z',
+    updatedAt: '2024-09-07T00:03:52.000Z'
+  },
+  {
+    id: 'b0b4d444-7865-4a35-8430-917e6cd93c52',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1517401,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.56640625,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:07:30.000Z',
+    updatedAt: '2024-09-07T00:07:44.000Z'
+  },
+  {
+    id: '512d2d50-cca3-4e1c-aff9-8ffa28531e11',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1518577,
+    restartAttempts: 1,
+    lastRestart: '2024-09-07T00:09:23.038Z',
+    cpu: 0,
+    memory: 52.546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:09:02.000Z',
+    updatedAt: '2024-09-07T00:14:01.000Z'
+  },
+  {
+    id: 'aebc3740-31c7-4b4b-bd31-77b94821c125',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1521280,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.5703125,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:13:51.000Z',
+    updatedAt: '2024-09-07T00:14:07.000Z'
+  },
+  {
+    id: 'b9d80124-7202-4fb4-9948-efabf622e0bd',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1521390,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.1,
+    memory: 52.56640625,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:13:55.000Z',
+    updatedAt: '2024-09-07T00:14:28.000Z'
+  },
+  {
+    id: 'c9fb5b3d-a34a-46ff-be3b-e4467aeed667',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1523322,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.546875,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:17:04.000Z',
+    updatedAt: '2024-09-07T00:17:26.000Z'
+  },
+  {
+    id: '75023491-3152-4c10-bef0-a1192361bc17',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1523850,
+    restartAttempts: 1,
+    lastRestart: '2024-09-07T00:17:44.158Z',
+    cpu: 0,
+    memory: 53.08984375,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:17:16.000Z',
+    updatedAt: '2024-09-07T00:21:12.000Z'
+  },
+  {
+    id: '3e2567c3-6f79-4e31-a0bb-7eacd2b3404b',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1526028,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.56640625,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:21:04.000Z',
+    updatedAt: '2024-09-07T00:21:33.000Z'
+  },
+  {
+    id: '162a6c50-383a-42b0-876a-30d1dca0e587',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1526278,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.73046875,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:21:23.000Z',
+    updatedAt: '2024-09-07T00:22:07.000Z'
+  },
+  {
+    id: '832d8f8e-f873-408a-8789-2af2624b2037',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1526785,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0.10010010010010009,
+    memory: 52.5390625,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:22:01.000Z',
+    updatedAt: '2024-09-07T00:22:34.000Z'
+  },
+  {
+    id: '9c006f45-43e1-4891-9022-724fcb70162f',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'crashed',
+    pid: 1527522,
+    restartAttempts: 1,
+    lastRestart: '2024-09-07T00:22:56.149Z',
+    cpu: 0,
+    memory: 52.77734375,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:22:26.000Z',
+    updatedAt: '2024-09-07T00:25:52.000Z'
+  },
+  {
+    id: 'b8b3d691-d6a5-40d4-9ba0-a9fd9c4ac2e1',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1529338,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.57421875,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:25:42.000Z',
+    updatedAt: '2024-09-07T00:26:00.000Z'
+  },
+  {
+    id: 'fef5ef80-c75e-4118-ba4a-2889f6c475f6',
+    name: 'long-running-process',
+    command: 'node -e "\n' +
+      "    console.log('Long-running process started');\n" +
+      '    let counter = 0;\n' +
+      '    setInterval(() => {\n' +
+      "      console.log('Still running... Counter:', counter++);\n" +
+      '    }, 1000);\n' +
+      '  "',
+    status: 'stopped',
+    pid: 1530771,
+    restartAttempts: 0,
+    lastRestart: null,
+    cpu: 0,
+    memory: 52.53125,
+    maxMemory: 1024,
+    createdAt: '2024-09-07T00:27:53.000Z',
+    updatedAt: '2024-09-07T00:28:07.000Z'
+  }
+]
+Successfully listed 51 processes
+All processes have the expected fields
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:info-process.stdout.txt">
+Starting ProcessController (e2e) info process test
+Testing: should be able to get info about a process over api
+Attempting to get info for process with id: 1bfe5e6f-1289-4a44-881a-294846a36a84
+Process info response: {
+  id: '1bfe5e6f-1289-4a44-881a-294846a36a84',
+  name: 'hello-world',
+  command: 'node -e "\n' +
+    "    console.log('Hello, World!');\n" +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running...');\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'stopped',
+  pid: 1129547,
+  restartAttempts: 0,
+  lastRestart: null,
+  cpu: 0,
+  memory: 0,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T19:55:49.000Z',
+  updatedAt: '2024-09-06T19:59:24.000Z'
+}
+Test passed successfully
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:restart-process.stdout.txt">
+Starting ProcessController (e2e) restart process test
+Testing: should be able to restart a running process over api
+Attempting to restart process with id: 75023491-3152-4c10-bef0-a1192361bc17
+Restart process response: {
+  id: '75023491-3152-4c10-bef0-a1192361bc17',
+  name: 'long-running-process',
+  command: 'node -e "\n' +
+    "    console.log('Long-running process started');\n" +
+    '    let counter = 0;\n' +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running... Counter:', counter++);\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'running',
+  pid: 1523850,
+  restartAttempts: 1,
+  lastRestart: '2024-09-07T00:17:44.158Z',
+  cpu: 0,
+  memory: 52.4921875,
+  maxMemory: 1024,
+  createdAt: '2024-09-07T00:17:16.000Z',
+  updatedAt: '2024-09-07T00:17:26.000Z',
+  _process: {
+    _events: {},
+    _eventsCount: 1,
+    _closesNeeded: 3,
+    _closesGot: 0,
+    connected: false,
+    signalCode: null,
+    exitCode: null,
+    killed: false,
+    spawnfile: '/bin/sh',
+    _handle: { pid: 1523850 },
+    spawnargs: [
+      '/bin/sh',
+      '-c',
+      'node -e "\n' +
+        "    console.log('Long-running process started');\n" +
+        '    let counter = 0;\n' +
+        '    setInterval(() => {\n' +
+        "      console.log('Still running... Counter:', counter++);\n" +
+        '    }, 1000);\n' +
+        '  "'
+    ],
+    pid: 1523850,
+    stdin: null,
+    stdout: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stderr: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stdio: [ null, [Object], [Object] ]
+  }
+}
+Waiting for 10 seconds to ensure the process has restarted and stabilized
+Verifying that the process is running
+Test completed. Final process status: running
+
+</FILE>
+<FILE path="test/delete-process.test.ts" TARGET>
+(empty file)
+</FILE>
 <REQUEST>
-setupProcessEventListenersis restarting the process after running stop because it thinks the process has crashed
+should delete process and function similar to the other tests
 </REQUEST>

@@ -1,4 +1,4 @@
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
+import { Module, Controller, Get, Post, Delete, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
 import { ProcessManagerService } from '../services/process-manager.service';
 import { ScalingRule } from '../interfaces/scaling-rule.interface';
 
@@ -49,5 +49,15 @@ export class ProcessController {
       throw new InternalServerErrorException('Failed to restart the process');
     }
     return restartedProcess;
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  async deleteProcess(@Param('id') id: string) {
+    const deletedProcess = await this.processManagerService.deleteProcess(id);
+    if (!deletedProcess) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+    return { message: `Process ${deletedProcess.name} (${id}) has been deleted` };
   }
 }

@@ -40,4 +40,14 @@ export class ProcessController {
   getScalingRules() {
     return this.processManagerService.getScalingRules();
   }
+
+  @Post(':id/restart')
+  @HttpCode(200)
+  async restartProcess(@Param('id') id: string) {
+    const restartedProcess = await this.processManagerService.restartProcess(id);
+    if (restartedProcess.status !== 'running') {
+      throw new InternalServerErrorException('Failed to restart the process');
+    }
+    return restartedProcess;
+  }
 }

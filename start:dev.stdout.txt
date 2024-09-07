@@ -108,3 +108,209 @@ kill 1535384 SIGTERM
 [2024-09-07T00:36:43.320Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
 [2024-09-07T00:36:43.320Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
 [2024-09-07T00:36:43.327Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+c[[90m7:40:11 PM[0m] File change detected. Starting incremental compilation...
+
+[96msrc/controllers/process.controller.ts[0m:[93m11[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcesses' does not exist on type 'ProcessManagerService'.
+
+[7m11[0m     return this.processManagerService.getProcesses();
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m16[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'startProcess' does not exist on type 'ProcessManagerService'.
+
+[7m16[0m     return this.processManagerService.startProcess(data);
+[7m  [0m [91m                                      ~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m22[0m:[93m61[0m - [91merror[0m[90m TS2339: [0mProperty 'stopProcess' does not exist on type 'ProcessManagerService'.
+
+[7m22[0m     const stoppedProcess = await this.processManagerService.stopProcess(id);
+[7m  [0m [91m                                                            ~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m31[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getProcessInfo' does not exist on type 'ProcessManagerService'.
+
+[7m31[0m     return this.processManagerService.getProcessInfo(id);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m36[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'addScalingRule' does not exist on type 'ProcessManagerService'.
+
+[7m36[0m     return this.processManagerService.addScalingRule(rule);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m41[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'getScalingRules' does not exist on type 'ProcessManagerService'.
+
+[7m41[0m     return this.processManagerService.getScalingRules();
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~~[0m
+
+[96msrc/controllers/process.controller.ts[0m:[93m47[0m:[93m63[0m - [91merror[0m[90m TS2339: [0mProperty 'restartProcess' does not exist on type 'ProcessManagerService'.
+
+[7m47[0m     const restartedProcess = await this.processManagerService.restartProcess(id);
+[7m  [0m [91m                                                              ~~~~~~~~~~~~~~[0m
+
+[96msrc/services/process-manager.service.ts[0m:[93m14[0m:[93m14[0m - [91merror[0m[90m TS2420: [0mClass 'ProcessManagerService' incorrectly implements interface 'OnModuleInit'.
+  Property 'onModuleInit' is missing in type 'ProcessManagerService' but required in type 'OnModuleInit'.
+
+[7m14[0m export class ProcessManagerService implements OnModuleInit {
+[7m  [0m [91m             ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96mnode_modules/@nestjs/common/interfaces/hooks/on-init.interface.d.ts[0m:[93m9[0m:[93m5[0m
+    [7m9[0m     onModuleInit(): any;
+    [7m [0m [96m    ~~~~~~~~~~~~~~~~~~~~[0m
+    'onModuleInit' is declared here.
+
+[96msrc/services/process-manager.service.ts[0m:[93m36[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'stopProcess' does not exist on type 'ProcessManagerService'.
+
+[7m36[0m       await this.stopProcess(id);
+[7m  [0m [91m                 ~~~~~~~~~~~[0m
+
+[[90m7:40:11 PM[0m] Found 9 errors. Watching for file changes.
+
+c[[90m7:41:47 PM[0m] File change detected. Starting incremental compilation...
+
+[[90m7:41:47 PM[0m] Found 0 errors. Watching for file changes.
+
+[2024-09-07T00:41:47.745Z] [LOG] [Bootstrap] [NestFactory] Starting Nest application...
+[2024-09-07T00:41:47.755Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-07T00:41:47.755Z] [LOG] [Bootstrap] [InstanceLoader] ConfigHostModule dependencies initialized
+[2024-09-07T00:41:47.755Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-07T00:41:47.755Z] [LOG] [Bootstrap] [InstanceLoader] ConfigModule dependencies initialized
+[2024-09-07T00:41:47.773Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[2024-09-07T00:41:47.774Z] [LOG] [Bootstrap] [InstanceLoader] TypeOrmModule dependencies initialized
+[2024-09-07T00:41:47.774Z] [LOG] [Bootstrap] [InstanceLoader] AppModule dependencies initialized
+[2024-09-07T00:41:47.777Z] [LOG] [Bootstrap] [RoutesResolver] ProcessController {/processes}:
+[2024-09-07T00:41:47.778Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, GET} route
+[2024-09-07T00:41:47.779Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes, POST} route
+[2024-09-07T00:41:47.779Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/stop, POST} route
+[2024-09-07T00:41:47.779Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, GET} route
+[2024-09-07T00:41:47.779Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rule, POST} route
+[2024-09-07T00:41:47.780Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/scaling-rules, GET} route
+[2024-09-07T00:41:47.780Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id/restart, POST} route
+[2024-09-07T00:41:47.780Z] [LOG] [Bootstrap] [RouterExplorer] Mapped {/processes/:id, DELETE} route
+[2024-09-07T00:41:47.787Z] [LOG] [Bootstrap] [NestApplication] Nest application successfully started
+[2024-09-07T00:46:22.368Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (1bfe5e6f-1289-4a44-881a-294846a36a84)
+[2024-09-07T00:46:22.375Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:28.307Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (a68ef4b3-0eae-4582-a080-468a4117037e)
+[2024-09-07T00:46:28.309Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:29.872Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (7ef5f1d3-04f3-4b1c-9130-0cc4b4e4a4b9)
+[2024-09-07T00:46:29.876Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:31.339Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (6aae70f8-9436-4ccf-af57-dc79b9a11d1b)
+[2024-09-07T00:46:31.343Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:32.863Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (e3a1fa7f-2f66-4290-be5e-f0d6a41b0ac0)
+[2024-09-07T00:46:32.867Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:34.364Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (9b7fcd22-6ca6-4218-afa1-079fc75c039a)
+[2024-09-07T00:46:34.368Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:35.966Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (750c32f6-00a8-46f4-b7e4-bb67196ffbdc)
+[2024-09-07T00:46:35.971Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:37.405Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (cac917c7-03a1-4198-b8af-5b99654f5528)
+[2024-09-07T00:46:37.410Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:38.768Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process hello-world (fbdfccf7-8673-495a-83bf-504f1299e6cb)
+[2024-09-07T00:46:38.771Z] [LOG] [Bootstrap] [ProcessManagerService] Process hello-world (undefined) has been deleted
+[2024-09-07T00:46:40.043Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (96fd9ab2-402c-4099-9776-9442e9d06e69)
+[2024-09-07T00:46:40.047Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:41.323Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (8575992f-2608-4698-8da8-fbf431920897)
+[2024-09-07T00:46:41.327Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:42.692Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (f6713908-1ea4-4107-8274-cb4f80e418a8)
+[2024-09-07T00:46:42.695Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:44.254Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (8b05f111-2e21-447e-b99e-76154d3e4ccb)
+[2024-09-07T00:46:44.259Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:45.934Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (17746e36-2c0c-436f-a857-b0efbf875321)
+[2024-09-07T00:46:45.938Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:47.300Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (68bcbec8-241c-47cc-9f29-925807cf6806)
+[2024-09-07T00:46:47.305Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:48.551Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (8a32730c-c31c-4b62-9eb9-88fa09ebb0a3)
+[2024-09-07T00:46:48.554Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:49.965Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (a78d0bf9-04ab-4dbb-8368-f48bb4cf6f02)
+[2024-09-07T00:46:49.969Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:51.374Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (fa7be617-98ef-4d17-bc74-d4466588ce2e)
+[2024-09-07T00:46:51.378Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:52.907Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (3bec8370-5225-4353-82a7-aef274044065)
+[2024-09-07T00:46:52.909Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:54.247Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (a4ea751c-1e95-4a05-80ab-89197a5d5bda)
+[2024-09-07T00:46:54.251Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:55.588Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (c55cac46-dbac-4d87-a7f4-b9443e92c57b)
+[2024-09-07T00:46:55.592Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:56.930Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (6589d468-6475-4737-aa6c-a2e847b020f3)
+[2024-09-07T00:46:56.935Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:58.354Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (0a0bf082-cdf1-4d60-b72c-bb9d90061675)
+[2024-09-07T00:46:58.357Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:46:59.623Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (47afa79f-1fa9-4187-a60b-f2ab297deba9)
+[2024-09-07T00:46:59.625Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:01.055Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (4da1de4c-bf5b-4764-920e-095943c71b20)
+[2024-09-07T00:47:01.060Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:02.330Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (9aa7d91d-2312-442b-a6e1-0dc970916bd9)
+[2024-09-07T00:47:02.335Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:03.676Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (e93acbc6-50d8-460f-a429-96d1ed7335d1)
+[2024-09-07T00:47:03.680Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:05.011Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (ab085664-2af6-4f87-b580-f45b4b87eb77)
+[2024-09-07T00:47:05.013Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:06.479Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (1887e604-7a47-4422-81d4-acdb2f4471b4)
+[2024-09-07T00:47:06.482Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:07.984Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (8af9c636-9afd-4d6f-89d6-c12306f19a11)
+[2024-09-07T00:47:07.988Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:09.273Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (4a78eede-aa6b-4a6d-a1df-df851a53ddd7)
+[2024-09-07T00:47:09.278Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:10.786Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (4d6d1a30-49a8-4935-9c48-6c0f7bc81b63)
+[2024-09-07T00:47:10.791Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:13.343Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (60714785-9c50-4312-8c0b-ed730289ff7c)
+[2024-09-07T00:47:13.346Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:14.698Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (d1458dad-dcd2-4720-ab43-f27fe42eeef4)
+[2024-09-07T00:47:14.702Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:16.066Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (ac006d95-b08e-44d5-978b-3fe9e49949aa)
+[2024-09-07T00:47:16.075Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:17.339Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (b3766c56-62e6-406b-81e3-bf2016c585de)
+[2024-09-07T00:47:17.343Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:18.603Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (fd4100c8-3baf-405a-a228-07f344905165)
+[2024-09-07T00:47:18.607Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:19.851Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (93e7cd01-e02b-4783-a9ea-ee85420709fd)
+[2024-09-07T00:47:19.855Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:21.028Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (3a68b3cc-bcf0-443d-83b2-20f079494d9e)
+[2024-09-07T00:47:21.032Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:22.206Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (b0b4d444-7865-4a35-8430-917e6cd93c52)
+[2024-09-07T00:47:22.210Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:23.440Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (512d2d50-cca3-4e1c-aff9-8ffa28531e11)
+[2024-09-07T00:47:23.444Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:24.697Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (aebc3740-31c7-4b4b-bd31-77b94821c125)
+[2024-09-07T00:47:24.701Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:25.942Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (b9d80124-7202-4fb4-9948-efabf622e0bd)
+[2024-09-07T00:47:25.946Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:27.215Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (c9fb5b3d-a34a-46ff-be3b-e4467aeed667)
+[2024-09-07T00:47:27.220Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:28.458Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (75023491-3152-4c10-bef0-a1192361bc17)
+[2024-09-07T00:47:28.460Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:29.664Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (3e2567c3-6f79-4e31-a0bb-7eacd2b3404b)
+[2024-09-07T00:47:29.668Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:31.029Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (162a6c50-383a-42b0-876a-30d1dca0e587)
+[2024-09-07T00:47:31.033Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:32.289Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (832d8f8e-f873-408a-8789-2af2624b2037)
+[2024-09-07T00:47:32.293Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:33.543Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (9c006f45-43e1-4891-9022-724fcb70162f)
+[2024-09-07T00:47:33.548Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:34.773Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (b8b3d691-d6a5-40d4-9ba0-a9fd9c4ac2e1)
+[2024-09-07T00:47:34.778Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:36.049Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (fef5ef80-c75e-4118-ba4a-2889f6c475f6)
+[2024-09-07T00:47:36.053Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:37.197Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (754ca98f-a73b-4b67-a442-7ed3b4c4ab29)
+[2024-09-07T00:47:37.201Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:47:38.416Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (5bda8ccd-2e2d-453b-bb80-1bad206453ac)
+[2024-09-07T00:47:38.421Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted
+[2024-09-07T00:48:17.195Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Long-running process started
+[2024-09-07T00:48:18.197Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 0
+[2024-09-07T00:48:19.197Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 1
+[2024-09-07T00:48:20.198Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 2
+[2024-09-07T00:48:21.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 3
+[2024-09-07T00:48:22.200Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 4
+[2024-09-07T00:48:23.201Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 5
+[2024-09-07T00:48:24.202Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 6
+[2024-09-07T00:48:25.203Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 7
+[2024-09-07T00:48:26.203Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 8
+[2024-09-07T00:48:27.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 9
+[2024-09-07T00:48:28.206Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 10
+[2024-09-07T00:48:29.205Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 11
+[2024-09-07T00:48:30.206Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 12
+[2024-09-07T00:48:31.208Z] [LOG] [Bootstrap] [ProcessManagerService] [long-running-process] Still running... Counter: 13
+[2024-09-07T00:48:31.626Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to delete process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6)
+[2024-09-07T00:48:31.627Z] [LOG] [Bootstrap] [ProcessManagerService] Attempting to stop process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6)
+[2024-09-07T00:48:31.627Z] [LOG] [Bootstrap] [ProcessManagerService] Killing process long-running-process (PID: 1545858)
+kill 1545858 SIGTERM
+[2024-09-07T00:48:31.627Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6) stopped successfully
+[2024-09-07T00:48:31.629Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6) exited with code null
+[2024-09-07T00:48:31.633Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6) was intentionally stopped. Not restarting.
+[2024-09-07T00:48:31.636Z] [LOG] [Bootstrap] [ProcessManagerService] Process long-running-process (undefined) has been deleted

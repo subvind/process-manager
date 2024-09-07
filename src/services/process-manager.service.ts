@@ -278,4 +278,23 @@ export class ProcessManagerService implements OnModuleInit {
       });
     }
   }
+
+  async deleteProcess(id: string): Promise<Process | null> {
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      return null;
+    }
+
+    this.logger.log(`Attempting to delete process ${process.name} (${process.id})`);
+
+    if (process.status === 'running') {
+      await this.stopProcess(id);
+    }
+
+    await this.processRepository.remove(process);
+
+    this.logger.log(`Process ${process.name} (${process.id}) has been deleted`);
+
+    return process;
+  }
 }

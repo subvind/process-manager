@@ -1,0 +1,8 @@
+Starting ProcessController (e2e) delete process test
+Testing: should be able to delete a process over api
+Attempting to delete process with id: bfc895d4-9e9e-4b3f-8055-b7e092518dd6
+Delete process response: {
+  message: 'Process long-running-process (bfc895d4-9e9e-4b3f-8055-b7e092518dd6) has been deleted'
+}
+Verifying that the process has been deleted
+Test passed successfully

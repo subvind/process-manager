@@ -11,6 +11,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test:delete-process": "ts-node ./test/delete-process.test.ts 2>&1 | tee test:delete-process.stdout.txt",
     "test:info-process": "ts-node ./test/info-process.test.ts 2>&1 | tee test:info-process.stdout.txt",
     "test:list-process": "ts-node ./test/list-process.test.ts 2>&1 | tee test:list-process.stdout.txt",
     "test:restart-process": "ts-node ./test/restart-process.test.ts 2>&1 | tee test:restart-process.stdout.txt",
