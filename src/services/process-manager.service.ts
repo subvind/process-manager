@@ -140,30 +140,6 @@ export class ProcessManagerService implements OnModuleInit {
       if (process.pid) {
         try {
           process.stopProcess();
-          await this.processRepository.save(process);
-          
-          // Wait for the process to exit
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              this.logger.warn(`Process ${process.name} did not exit within 5 seconds, trying again...`);
-              process.kill('SIGTERM');
-              resolve();
-            }, 5000);
-
-            process.on('exit', () => {
-              clearTimeout(timeout);
-              resolve();
-            });
-          });
-
-          // Double-check if the process is still running
-          try {
-            process.kill('SIGKILL');
-            this.logger.warn(`Process ${process.name} is still running after kill attempt`);
-          } catch (error) {
-            // Process is not running
-            this.logger.log(`Process ${process.name} has been successfully terminated`);
-          }
         } catch (error) {
           this.logger.error(`Failed to kill process ${process.name} (PID: ${process.pid}): ${error.message}`);
         }

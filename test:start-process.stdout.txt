@@ -19,7 +19,7 @@ Response body: {
     exitCode: null,
     killed: false,
     spawnfile: '/bin/sh',
-    _handle: { pid: 1523322 },
+    _handle: { pid: 1535384 },
     spawnargs: [
       '/bin/sh',
       '-c',
@@ -31,7 +31,7 @@ Response body: {
         '    }, 1000);\n' +
         '  "'
     ],
-    pid: 1523322,
+    pid: 1535384,
     stdin: null,
     stdout: {
       connecting: false,
@@ -69,17 +69,17 @@ Response body: {
     },
     stdio: [ null, [Object], [Object] ]
   },
-  pid: 1523322,
+  pid: 1535384,
   status: 'running',
   lastRestart: null,
-  id: 'c9fb5b3d-a34a-46ff-be3b-e4467aeed667',
+  id: '5bda8ccd-2e2d-453b-bb80-1bad206453ac',
   restartAttempts: 0,
   cpu: 0,
   memory: 0,
   maxMemory: 1024,
-  createdAt: '2024-09-07T00:17:04.000Z',
-  updatedAt: '2024-09-07T00:17:04.000Z'
+  createdAt: '2024-09-07T00:35:08.000Z',
+  updatedAt: '2024-09-07T00:35:08.000Z'
 }
 Waiting for 10 seconds to ensure the process has started and is stable
 Verifying that the process is still running
-Test failed: 
+Test passed successfully

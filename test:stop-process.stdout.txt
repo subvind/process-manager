@@ -1,8 +1,8 @@
 Starting ProcessController (e2e) stop process test
 Testing: should be able to stop a running process over api
-Attempting to stop process with id: b9d80124-7202-4fb4-9948-efabf622e0bd
+Attempting to stop process with id: 5bda8ccd-2e2d-453b-bb80-1bad206453ac
 Stop process response: {
-  id: 'b9d80124-7202-4fb4-9948-efabf622e0bd',
+  id: '5bda8ccd-2e2d-453b-bb80-1bad206453ac',
   name: 'long-running-process',
   command: 'node -e "\n' +
     "    console.log('Long-running process started');\n" +
@@ -12,13 +12,14 @@ Stop process response: {
     '    }, 1000);\n' +
     '  "',
   status: 'stopped',
+  pid: null,
   restartAttempts: 0,
   lastRestart: null,
-  cpu: 0.1,
-  memory: 52.56640625,
+  cpu: 0,
+  memory: 52.5,
   maxMemory: 1024,
-  createdAt: '2024-09-07T00:13:55.000Z',
-  updatedAt: '2024-09-07T00:14:28.000Z'
+  createdAt: '2024-09-07T00:35:08.000Z',
+  updatedAt: '2024-09-07T00:35:21.000Z'
 }
 Waiting for 2 seconds to ensure the process has stopped
 Verifying that the process is stopped
