@@ -139,8 +139,7 @@ export class ProcessManagerService implements OnModuleInit {
       
       if (process.pid) {
         try {
-          // Use process.kill() method from the Process entity
-          process.kill('SIGTERM');
+          process.stopProcess();
           
           // Wait for the process to exit
           await new Promise<void>((resolve, reject) => {
@@ -158,7 +157,7 @@ export class ProcessManagerService implements OnModuleInit {
 
           // Double-check if the process is still running
           try {
-            process.kill(0);
+            process.kill('SIGKILL');
             this.logger.warn(`Process ${process.name} is still running after kill attempt`);
           } catch (error) {
             // Process is not running

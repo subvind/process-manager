@@ -89,9 +89,9 @@ export class Process implements ProcessInterface {
   stopProcess(): void {
     if (this.status === 'running') {
       this.kill('SIGTERM');
-      // this._process = undefined;
+      this._process = undefined;
       this.status = 'stopped';
-      // this.pid = undefined;
+      this.pid = undefined;
     }
   }
 }

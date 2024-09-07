@@ -272,374 +272,6 @@ export function dot(a: V3, b: V3): number {
 
 You will now be given the actual INPUT you must work with.
 
-<FILE path="/home/travis/Projects/process-manager/src/services/process-manager.service.ts">
-import { NotFoundException, Injectable, OnModuleInit } from '@nestjs/common';
-import { ChildProcess, spawn } from 'child_process';
-import * as pidusage from 'pidusage';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Process } from '../entities/process.entity';
-import { ScalingRule } from '../entities/scaling-rule.entity';
-import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
-import { Process as ProcessInterface } from '../interfaces/process.interface';
-import { ScalingRule as ScalingRuleInterface } from '../interfaces/scaling-rule.interface';
-
-@Injectable()
-export class ProcessManagerService implements OnModuleInit {
-  private readonly logger = new Logger(ProcessManagerService.name);
-
-  constructor(
-    @InjectRepository(Process)
-    private processRepository: Repository<Process>,
-    @InjectRepository(ScalingRule)
-    private scalingRuleRepository: Repository<ScalingRule>,
-    private configService: ConfigService
-  ) {}
-
-  async onModuleInit() {
-    const interval = this.configService.get<number>('MONITORING_INTERVAL', 10000);
-    setInterval(() => this.monitorAndScale(), interval);
-    await this.loadPersistedProcesses();
-  }
-
-  private async loadPersistedProcesses() {
-    const processes = await this.processRepository.find();
-    for (const process of processes) {
-      if (process.status === 'running') {
-        try {
-          await this.startProcess({ name: process.name, command: process.command });
-        } catch (error) {
-          this.logger.error(`Failed to restart persisted process ${process.name}: ${error.message}`);
-          process.status = 'crashed';
-          await this.processRepository.save(process);
-        }
-      }
-    }
-  }
-
-  private async monitorAndScale() {
-    const processes = await this.processRepository.find({ where: { status: 'running' } });
-    for (const process of processes) {
-      await this.updateProcessMetrics(process);
-    }
-
-    await this.applyScalingRules();
-    await this.balanceLoad();
-  }
-
-  private async updateProcessMetrics(process: ProcessInterface) {
-    if (process.pid) {
-      try {
-        const usage = await pidusage(process.pid);
-        process.cpu = usage.cpu;
-        process.memory = usage.memory / 1024 / 1024; // Convert to MB
-        await this.processRepository.save(process);
-      } catch (error) {
-        this.logger.error(`Failed to update metrics for process ${process.name}: ${error.message}`);
-        if (error.message.includes('No matching pid found')) {
-          process.status = 'crashed';
-          process.pid = undefined;
-          await this.processRepository.save(process);
-        }
-      }
-    }
-  }
-
-  private async applyScalingRules() {
-    const rules = await this.scalingRuleRepository.find();
-    for (const rule of rules) {
-      const processes = await this.processRepository.find({ where: { name: rule.processName, status: 'running' } });
-      const avgCpu = processes.reduce((sum, p) => sum + p.cpu, 0) / processes.length;
-      const avgMemory = processes.reduce((sum, p) => sum + p.memory, 0) / processes.length;
-
-      if (avgCpu > rule.cpuThreshold || avgMemory > rule.memoryThreshold) {
-        if (processes.length < rule.maxInstances) {
-          await this.startProcess({ name: rule.processName, command: processes[0].command });
-          this.logger.log(`Scaled up process ${rule.processName} due to high resource usage`);
-        }
-      } else if (processes.length > rule.minInstances) {
-        await this.stopProcess(processes[processes.length - 1].id);
-        this.logger.log(`Scaled down process ${rule.processName} due to low resource usage`);
-      }
-    }
-  }
-
-  private async balanceLoad() {
-    const processes = await this.processRepository.find({ where: { status: 'running' } });
-    processes.sort((a, b) => (a.cpu / 100 + a.memory / a.maxMemory) - (b.cpu / 100 + b.memory / b.maxMemory));
-    // The sorted list can now be used by a load balancer to distribute incoming requests
-  }
-
-  async getProcesses() {
-    return this.processRepository.find();
-  }
-
-  async startProcess(data: { name: string; command: string }): Promise<Process> {
-    const existingProcess = await this.processRepository.findOne({ where: { name: data.name } });
-    if (existingProcess) {
-      this.logger.warn(`Process ${data.name} already exists. Stopping existing process before starting a new one.`);
-      await this.stopProcess(existingProcess.id);
-    }
-
-    const newProcess = this.processRepository.create(data);
-    try {
-      const [command, ...args] = data.command.split(' ');
-      const childProcess = spawn(command, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        shell: true,
-      });
-      newProcess.process = childProcess;
-      newProcess.pid = childProcess.pid;
-      newProcess.status = 'running';
-      this.setupProcessEventListeners(newProcess);
-      return this.processRepository.save(newProcess);
-    } catch (error) {
-      this.logger.error(`Failed to start process ${data.name}: ${error.message}`);
-      newProcess.status = 'crashed';
-      return this.processRepository.save(newProcess);
-    }
-  }
-
-  public async stopProcess(id: string): Promise<Process> {
-    const process = await this.processRepository.findOne({ where: { id } });
-    if (!process) {
-      throw new NotFoundException(`Process with id ${id} not found`);
-    }
-    
-    this.logger.log(`Attempting to stop process ${process.name} (${process.id})`);
-    
-    if (process.status === 'running') {
-      this.logger.log(`Killing process ${process.name} (PID: ${process.pid})`);
-      
-      if (process.pid) {
-        try {
-          // Use process.kill() method from the Process entity
-          process.kill('SIGTERM');
-          
-          // Wait for the process to exit
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              this.logger.warn(`Process ${process.name} did not exit within 5 seconds, forcing kill with SIGKILL`);
-              process.kill('SIGKILL');
-              resolve();
-            }, 5000);
-
-            process.on('exit', () => {
-              clearTimeout(timeout);
-              resolve();
-            });
-          });
-
-          // Double-check if the process is still running
-          try {
-            process.kill(0);
-            this.logger.warn(`Process ${process.name} is still running after kill attempt`);
-          } catch (error) {
-            // Process is not running
-            this.logger.log(`Process ${process.name} has been successfully terminated`);
-          }
-        } catch (error) {
-          this.logger.error(`Failed to kill process ${process.name} (PID: ${process.pid}): ${error.message}`);
-        }
-      } else {
-        this.logger.warn(`No PID found for process ${process.name}, assuming it's not running`);
-      }
-    }
-    
-    process.status = 'stopped';
-    process.pid = undefined;
-    
-    this.logger.log(`Process ${process.name} (${process.id}) stopped successfully`);
-    
-    return this.processRepository.save(process);
-  }
-
-  async getProcessInfo(id: string) {
-    const process = await this.processRepository.findOne({ where: { id } });
-    if (!process) {
-      throw new NotFoundException(`Process with id ${id} not found`);
-    }
-    return process;
-  }
-
-  async addScalingRule(rule: ScalingRuleInterface) {
-    const newRule = this.scalingRuleRepository.create(rule);
-    return this.scalingRuleRepository.save(newRule);
-  }
-
-  async getScalingRules() {
-    return this.scalingRuleRepository.find();
-  }
-
-  async restartProcess(id: string): Promise<Process> {
-    const process = await this.processRepository.findOne({ where: { id } });
-    if (!process) {
-      throw new NotFoundException(`Process with id ${id} not found`);
-    }
-
-    this.logger.log(`Attempting to restart process ${process.name} (${process.id})`);
-
-    // Stop the existing process
-    await this.stopProcess(id);
-    
-    // Wait for the process to fully stop
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const maxRetries = 3;
-    let retryCount = 0;
-    let success = false;
-
-    while (retryCount < maxRetries && !success) {
-      try {
-        const [command, ...args] = process.command.split(' ');
-        const childProcess = spawn(command, args, {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          shell: true,
-        });
-
-        process.process = childProcess;
-        process.pid = childProcess.pid;
-        process.status = 'running';
-        process.restartAttempts++;
-        process.lastRestart = new Date();
-
-        this.setupProcessEventListeners(process);
-        await this.processRepository.save(process);
-
-        this.logger.log(`Process ${process.name} (${process.id}) restarted successfully on attempt ${retryCount + 1}.`);
-        success = true;
-      } catch (error) {
-        this.logger.error(`Failed to restart process ${process.name} (${process.id}) on attempt ${retryCount + 1}: ${error.message}`);
-        retryCount++;
-        if (retryCount < maxRetries) {
-          this.logger.log(`Retrying in 5 seconds...`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-      }
-    }
-
-    if (!success) {
-      process.status = 'crashed';
-      await this.processRepository.save(process);
-      throw new Error(`Failed to restart process ${process.name} (${process.id}) after ${maxRetries} attempts`);
-    }
-
-    return process;
-  }
-
-  private setupProcessEventListeners(process: ProcessInterface) {
-    if (process.process) {
-      process.process.on('exit', async (code) => {
-        this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
-        if (code !== 0 && process.status !== 'stopped') {
-          this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
-          process.status = 'crashed';
-        } else {
-          process.status = 'stopped';
-        }
-        process.pid = undefined;
-        await this.processRepository.save(process);
-
-        if (process.status === 'crashed') {
-          if (process.restartAttempts < 3) {
-            this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
-            try {
-              await new Promise(resolve => setTimeout(resolve, 5000));
-              await this.restartProcess(process.id);
-            } catch (error) {
-              this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
-            }
-          } else {
-            this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
-          }
-        }
-      });
-
-      process.process.stdout?.on('data', (data) => {
-        this.logger.log(`[${process.name}] ${data.toString().trim()}`);
-      });
-
-      process.process.stderr?.on('data', (data) => {
-        this.logger.error(`[${process.name}] ${data.toString().trim()}`);
-      });
-    }
-  }
-}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
-import { ChildProcess } from 'child_process';
-
-export interface Process {
-  id?: string;
-  name: string;
-  command: string;
-  status: 'running' | 'stopped' | 'crashed';
-  pid?: number;
-  process?: ChildProcess;
-  restartAttempts: number;
-  lastRestart?: Date;
-  cpu: number;
-  memory: number;
-  kill: (signal: NodeJS.Signals) => void;
-  on: (event: string, listener: (...args: any[]) => void) => void;
-}
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
-import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
-import { ProcessManagerService } from '../services/process-manager.service';
-import { ScalingRule } from '../interfaces/scaling-rule.interface';
-
-@Controller('processes')
-export class ProcessController {
-  constructor(private processManagerService: ProcessManagerService) {}
-
-  @Get()
-  listProcesses() {
-    return this.processManagerService.getProcesses();
-  }
-
-  @Post()
-  startProcess(@Body() data: { name: string; command: string }) {
-    return this.processManagerService.startProcess(data);
-  }
-
-  @Post(':id/stop')
-  @HttpCode(200)
-  async stopProcess(@Param('id') id: string) {
-    const stoppedProcess = await this.processManagerService.stopProcess(id);
-    if (stoppedProcess.status !== 'stopped') {
-      throw new InternalServerErrorException('Failed to stop the process');
-    }
-    return stoppedProcess;
-  }
-
-  @Get(':id')
-  getProcessInfo(@Param('id') id: string) {
-    return this.processManagerService.getProcessInfo(id);
-  }
-
-  @Post('scaling-rule')
-  addScalingRule(@Body() rule: ScalingRule) {
-    return this.processManagerService.addScalingRule(rule);
-  }
-
-  @Get('scaling-rules')
-  getScalingRules() {
-    return this.processManagerService.getScalingRules();
-  }
-
-  @Post(':id/restart')
-  @HttpCode(200)
-  async restartProcess(@Param('id') id: string) {
-    const restartedProcess = await this.processManagerService.restartProcess(id);
-    if (restartedProcess.status !== 'running') {
-      throw new InternalServerErrorException('Failed to restart the process');
-    }
-    return restartedProcess;
-  }
-}
-</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/entities/process.entity.ts">
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ChildProcess } from 'child_process';
@@ -705,9 +337,8 @@ export class Process implements ProcessInterface {
   }
 
   kill(signal: NodeJS.Signals): void {
-    if (this._process) {
-      this._process.kill(signal);
-    } else if (this.pid) {
+    if (this.pid) {
+      console.log('kill', this.pid, signal)
       process.kill(this.pid, signal);
     }
   }
@@ -731,15 +362,33 @@ export class Process implements ProcessInterface {
 
   // Method to stop the process
   stopProcess(): void {
-    if (this.status === 'running' && this._process) {
-      this._process.kill();
-      this._process = undefined;
+    if (this.status === 'running') {
+      this.kill('SIGTERM');
+      // this._process = undefined;
       this.status = 'stopped';
-      this.pid = undefined;
+      // this.pid = undefined;
     }
   }
 }
 
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/interfaces/process.interface.ts">
+import { ChildProcess } from 'child_process';
+
+export interface Process {
+  id?: string;
+  name: string;
+  command: string;
+  status: 'running' | 'stopped' | 'crashed';
+  pid?: number;
+  process?: ChildProcess;
+  restartAttempts: number;
+  lastRestart?: Date;
+  cpu: number;
+  memory: number;
+  kill: (signal: NodeJS.Signals) => void;
+  on: (event: string, listener: (...args: any[]) => void) => void;
+}
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/src/logger/custom-logger.ts">
 import { ConsoleLogger, Injectable, Inject } from '@nestjs/common';
@@ -809,39 +458,6 @@ export class CustomLogger extends ConsoleLogger {
     }
   }
 }
-</FILE>
-<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProcessController } from './controllers/process.controller';
-import { ProcessManagerService } from './services/process-manager.service';
-import { Process } from './entities/process.entity';
-import { ScalingRule } from './entities/scaling-rule.entity';
-import { CustomLogger } from './logger/custom-logger';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
-        database: configService.get('DB_NAME', 'process_manager.sqlite'),
-        entities: [Process, ScalingRule],
-        synchronize: true, // Be cautious with this in production
-      }),
-      inject: [ConfigService],
-    }),
-    TypeOrmModule.forFeature([Process, ScalingRule]),
-  ],
-  controllers: [ProcessController],
-  providers: [
-    ProcessManagerService,
-    CustomLogger
-  ]
-})
-export class AppModule {}
 </FILE>
 <FILE path="/home/travis/Projects/process-manager/test/stop-process.test.ts">
 import * as request from 'supertest';
@@ -985,6 +601,190 @@ runTests().catch(error => {
   process.exit(1);
 });
 </FILE>
+<FILE path="/home/travis/Projects/process-manager/test:stop-process.stdout.txt">
+Starting ProcessController (e2e) stop process test
+Testing: should be able to stop a running process over api
+Attempting to stop process with id: 93e7cd01-e02b-4783-a9ea-ee85420709fd
+Test failed: socket hang up
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/test:restart-process.stdout.txt">
+Starting ProcessController (e2e) restart process test
+Testing: should be able to restart a running process over api
+Attempting to restart process with id: 8a32730c-c31c-4b62-9eb9-88fa09ebb0a3
+Restart process response: {
+  id: '8a32730c-c31c-4b62-9eb9-88fa09ebb0a3',
+  name: 'long-running-process',
+  command: 'node -e "\n' +
+    "    console.log('Long-running process started');\n" +
+    '    let counter = 0;\n' +
+    '    setInterval(() => {\n' +
+    "      console.log('Still running... Counter:', counter++);\n" +
+    '    }, 1000);\n' +
+    '  "',
+  status: 'running',
+  pid: 1449649,
+  restartAttempts: 1,
+  lastRestart: '2024-09-06T22:21:30.887Z',
+  cpu: 0,
+  memory: 52.546875,
+  maxMemory: 1024,
+  createdAt: '2024-09-06T22:20:56.000Z',
+  updatedAt: '2024-09-06T22:21:06.000Z',
+  _process: {
+    _events: {},
+    _eventsCount: 1,
+    _closesNeeded: 3,
+    _closesGot: 0,
+    connected: false,
+    signalCode: null,
+    exitCode: null,
+    killed: false,
+    spawnfile: '/bin/sh',
+    _handle: { pid: 1449649 },
+    spawnargs: [
+      '/bin/sh',
+      '-c',
+      'node -e "\n' +
+        "    console.log('Long-running process started');\n" +
+        '    let counter = 0;\n' +
+        '    setInterval(() => {\n' +
+        "      console.log('Still running... Counter:', counter++);\n" +
+        '    }, 1000);\n' +
+        '  "'
+    ],
+    pid: 1449649,
+    stdin: null,
+    stdout: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stderr: {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: null,
+      _closeAfterHandlingError: false,
+      _events: {},
+      _readableState: [Object],
+      _writableState: [Object],
+      allowHalfOpen: false,
+      _eventsCount: 3,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null
+    },
+    stdio: [ null, [Object], [Object] ]
+  }
+}
+Waiting for 10 seconds to ensure the process has restarted and stabilized
+Verifying that the process is running
+Test completed. Final process status: running
+
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/controllers/process.controller.ts">
+import { Module, Controller, Get, Post, Body, Param, NotFoundException, InternalServerErrorException, Injectable, OnModuleInit, HttpCode } from '@nestjs/common';
+import { ProcessManagerService } from '../services/process-manager.service';
+import { ScalingRule } from '../interfaces/scaling-rule.interface';
+
+@Controller('processes')
+export class ProcessController {
+  constructor(private processManagerService: ProcessManagerService) {}
+
+  @Get()
+  listProcesses() {
+    return this.processManagerService.getProcesses();
+  }
+
+  @Post()
+  startProcess(@Body() data: { name: string; command: string }) {
+    return this.processManagerService.startProcess(data);
+  }
+
+  @Post(':id/stop')
+  @HttpCode(200)
+  async stopProcess(@Param('id') id: string) {
+    const stoppedProcess = await this.processManagerService.stopProcess(id);
+    if (stoppedProcess.status !== 'stopped') {
+      throw new InternalServerErrorException('Failed to stop the process');
+    }
+    return stoppedProcess;
+  }
+
+  @Get(':id')
+  getProcessInfo(@Param('id') id: string) {
+    return this.processManagerService.getProcessInfo(id);
+  }
+
+  @Post('scaling-rule')
+  addScalingRule(@Body() rule: ScalingRule) {
+    return this.processManagerService.addScalingRule(rule);
+  }
+
+  @Get('scaling-rules')
+  getScalingRules() {
+    return this.processManagerService.getScalingRules();
+  }
+
+  @Post(':id/restart')
+  @HttpCode(200)
+  async restartProcess(@Param('id') id: string) {
+    const restartedProcess = await this.processManagerService.restartProcess(id);
+    if (restartedProcess.status !== 'running') {
+      throw new InternalServerErrorException('Failed to restart the process');
+    }
+    return restartedProcess;
+  }
+}
+</FILE>
+<FILE path="/home/travis/Projects/process-manager/src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProcessController } from './controllers/process.controller';
+import { ProcessManagerService } from './services/process-manager.service';
+import { Process } from './entities/process.entity';
+import { ScalingRule } from './entities/scaling-rule.entity';
+import { CustomLogger } from './logger/custom-logger';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'sqlite',
+        database: configService.get('DB_NAME', 'process_manager.sqlite'),
+        entities: [Process, ScalingRule],
+        synchronize: true, // Be cautious with this in production
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([Process, ScalingRule]),
+  ],
+  controllers: [ProcessController],
+  providers: [
+    ProcessManagerService,
+    CustomLogger
+  ]
+})
+export class AppModule {}
+</FILE>
 <FILE path="/home/travis/Projects/process-manager/src/main.ts">
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -1001,18 +801,300 @@ export async function bootstrap(): Promise<any> {
 bootstrap();
 
 </FILE>
-<FILE path="start:dev.stdout.txt" TARGET>
-c[[90m6:18:16 PM[0m] Starting compilation in watch mode...
+<FILE path="src/services/process-manager.service.ts" TARGET>
+import { NotFoundException, Injectable, OnModuleInit } from '@nestjs/common';
+import { ChildProcess, spawn } from 'child_process';
+import * as pidusage from 'pidusage';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Process } from '../entities/process.entity';
+import { ScalingRule } from '../entities/scaling-rule.entity';
+import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
+import { Process as ProcessInterface } from '../interfaces/process.interface';
+import { ScalingRule as ScalingRuleInterface } from '../interfaces/scaling-rule.interface';
 
-[96msrc/services/process-manager.service.ts[0m:[93m161[0m:[93m26[0m - [91merror[0m[90m TS2345: [0mArgument of type '0' is not assignable to parameter of type 'Signals'.
+@Injectable()
+export class ProcessManagerService implements OnModuleInit {
+  private readonly logger = new Logger(ProcessManagerService.name);
 
-[7m161[0m             process.kill(0);
-[7m   [0m [91m                         ~[0m
+  constructor(
+    @InjectRepository(Process)
+    private processRepository: Repository<Process>,
+    @InjectRepository(ScalingRule)
+    private scalingRuleRepository: Repository<ScalingRule>,
+    private configService: ConfigService
+  ) {}
 
-[[90m6:18:18 PM[0m] Found 1 error. Watching for file changes.
+  async onModuleInit() {
+    const interval = this.configService.get<number>('MONITORING_INTERVAL', 10000);
+    setInterval(() => this.monitorAndScale(), interval);
+    await this.loadPersistedProcesses();
+  }
 
+  private async loadPersistedProcesses() {
+    const processes = await this.processRepository.find();
+    for (const process of processes) {
+      if (process.status === 'running') {
+        try {
+          await this.startProcess({ name: process.name, command: process.command });
+        } catch (error) {
+          this.logger.error(`Failed to restart persisted process ${process.name}: ${error.message}`);
+          process.status = 'crashed';
+          await this.processRepository.save(process);
+        }
+      }
+    }
+  }
 
+  private async monitorAndScale() {
+    const processes = await this.processRepository.find({ where: { status: 'running' } });
+    for (const process of processes) {
+      await this.updateProcessMetrics(process);
+    }
+
+    await this.applyScalingRules();
+    await this.balanceLoad();
+  }
+
+  private async updateProcessMetrics(process: ProcessInterface) {
+    if (process.pid) {
+      try {
+        const usage = await pidusage(process.pid);
+        process.cpu = usage.cpu;
+        process.memory = usage.memory / 1024 / 1024; // Convert to MB
+        await this.processRepository.save(process);
+      } catch (error) {
+        this.logger.error(`Failed to update metrics for process ${process.name}: ${error.message}`);
+        if (error.message.includes('No matching pid found')) {
+          process.status = 'crashed';
+          process.pid = undefined;
+          await this.processRepository.save(process);
+        }
+      }
+    }
+  }
+
+  private async applyScalingRules() {
+    const rules = await this.scalingRuleRepository.find();
+    for (const rule of rules) {
+      const processes = await this.processRepository.find({ where: { name: rule.processName, status: 'running' } });
+      const avgCpu = processes.reduce((sum, p) => sum + p.cpu, 0) / processes.length;
+      const avgMemory = processes.reduce((sum, p) => sum + p.memory, 0) / processes.length;
+
+      if (avgCpu > rule.cpuThreshold || avgMemory > rule.memoryThreshold) {
+        if (processes.length < rule.maxInstances) {
+          await this.startProcess({ name: rule.processName, command: processes[0].command });
+          this.logger.log(`Scaled up process ${rule.processName} due to high resource usage`);
+        }
+      } else if (processes.length > rule.minInstances) {
+        await this.stopProcess(processes[processes.length - 1].id);
+        this.logger.log(`Scaled down process ${rule.processName} due to low resource usage`);
+      }
+    }
+  }
+
+  private async balanceLoad() {
+    const processes = await this.processRepository.find({ where: { status: 'running' } });
+    processes.sort((a, b) => (a.cpu / 100 + a.memory / a.maxMemory) - (b.cpu / 100 + b.memory / b.maxMemory));
+    // The sorted list can now be used by a load balancer to distribute incoming requests
+  }
+
+  async getProcesses() {
+    return this.processRepository.find();
+  }
+
+  async startProcess(data: { name: string; command: string }): Promise<Process> {
+    const existingProcess = await this.processRepository.findOne({ where: { name: data.name } });
+    if (existingProcess) {
+      this.logger.warn(`Process ${data.name} already exists. Stopping existing process before starting a new one.`);
+      await this.stopProcess(existingProcess.id);
+    }
+
+    const newProcess = this.processRepository.create(data);
+    try {
+      const [command, ...args] = data.command.split(' ');
+      const childProcess = spawn(command, args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: true,
+      });
+      newProcess.process = childProcess;
+      newProcess.pid = childProcess.pid;
+      newProcess.status = 'running';
+      this.setupProcessEventListeners(newProcess);
+      return this.processRepository.save(newProcess);
+    } catch (error) {
+      this.logger.error(`Failed to start process ${data.name}: ${error.message}`);
+      newProcess.status = 'crashed';
+      return this.processRepository.save(newProcess);
+    }
+  }
+
+  public async stopProcess(id: string): Promise<Process> {
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+    
+    this.logger.log(`Attempting to stop process ${process.name} (${process.id})`);
+    
+    if (process.status === 'running') {
+      this.logger.log(`Killing process ${process.name} (PID: ${process.pid})`);
+      
+      if (process.pid) {
+        try {
+          process.stopProcess();
+          
+          // Wait for the process to exit
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              this.logger.warn(`Process ${process.name} did not exit within 5 seconds, forcing kill with SIGKILL`);
+              process.kill('SIGKILL');
+              resolve();
+            }, 5000);
+
+            process.on('exit', () => {
+              clearTimeout(timeout);
+              resolve();
+            });
+          });
+
+          // Double-check if the process is still running
+          try {
+            process.kill('SIGKILL');
+            this.logger.warn(`Process ${process.name} is still running after kill attempt`);
+          } catch (error) {
+            // Process is not running
+            this.logger.log(`Process ${process.name} has been successfully terminated`);
+          }
+        } catch (error) {
+          this.logger.error(`Failed to kill process ${process.name} (PID: ${process.pid}): ${error.message}`);
+        }
+      } else {
+        this.logger.warn(`No PID found for process ${process.name}, assuming it's not running`);
+      }
+    }
+    
+    process.status = 'stopped';
+    process.pid = undefined;
+    
+    this.logger.log(`Process ${process.name} (${process.id}) stopped successfully`);
+    
+    return this.processRepository.save(process);
+  }
+
+  async getProcessInfo(id: string) {
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+    return process;
+  }
+
+  async addScalingRule(rule: ScalingRuleInterface) {
+    const newRule = this.scalingRuleRepository.create(rule);
+    return this.scalingRuleRepository.save(newRule);
+  }
+
+  async getScalingRules() {
+    return this.scalingRuleRepository.find();
+  }
+
+  async restartProcess(id: string): Promise<Process> {
+    const process = await this.processRepository.findOne({ where: { id } });
+    if (!process) {
+      throw new NotFoundException(`Process with id ${id} not found`);
+    }
+
+    this.logger.log(`Attempting to restart process ${process.name} (${process.id})`);
+
+    // Stop the existing process
+    await this.stopProcess(id);
+    
+    // Wait for the process to fully stop
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const maxRetries = 3;
+    let retryCount = 0;
+    let success = false;
+
+    while (retryCount < maxRetries && !success) {
+      try {
+        const [command, ...args] = process.command.split(' ');
+        const childProcess = spawn(command, args, {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: true,
+        });
+
+        process.process = childProcess;
+        process.pid = childProcess.pid;
+        process.status = 'running';
+        process.restartAttempts++;
+        process.lastRestart = new Date();
+
+        this.setupProcessEventListeners(process);
+        await this.processRepository.save(process);
+
+        this.logger.log(`Process ${process.name} (${process.id}) restarted successfully on attempt ${retryCount + 1}.`);
+        success = true;
+      } catch (error) {
+        this.logger.error(`Failed to restart process ${process.name} (${process.id}) on attempt ${retryCount + 1}: ${error.message}`);
+        retryCount++;
+        if (retryCount < maxRetries) {
+          this.logger.log(`Retrying in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+    }
+
+    if (!success) {
+      process.status = 'crashed';
+      await this.processRepository.save(process);
+      throw new Error(`Failed to restart process ${process.name} (${process.id}) after ${maxRetries} attempts`);
+    }
+
+    return process;
+  }
+
+  private setupProcessEventListeners(process: ProcessInterface) {
+    if (process.process) {
+      process.process.on('exit', async (code) => {
+        this.logger.log(`Process ${process.name} (${process.id}) exited with code ${code}`);
+        if (code !== 0 && process.status !== 'stopped') {
+          this.logger.error(`Process ${process.name} (${process.id}) crashed with code ${code}`);
+          process.status = 'crashed';
+        } else {
+          process.status = 'stopped';
+        }
+        process.pid = undefined;
+        await this.processRepository.save(process);
+
+        if (process.status === 'crashed') {
+          if (process.restartAttempts < 3) {
+            this.logger.log(`Attempting to restart crashed process ${process.name} (${process.id})`);
+            try {
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              await this.restartProcess(process.id);
+            } catch (error) {
+              this.logger.error(`Failed to restart crashed process ${process.name} (${process.id}): ${error.message}`);
+            }
+          } else {
+            this.logger.warn(`Process ${process.name} (${process.id}) has crashed ${process.restartAttempts} times. Stopping automatic restarts.`);
+          }
+        }
+      });
+
+      process.process.stdout?.on('data', (data) => {
+        this.logger.log(`[${process.name}] ${data.toString().trim()}`);
+      });
+
+      process.process.stderr?.on('data', (data) => {
+        this.logger.error(`[${process.name}] ${data.toString().trim()}`);
+      });
+    }
+  }
+}
 </FILE>
 <REQUEST>
-process.kill(0) does not exist
+setupProcessEventListenersis restarting the process after running stop because it thinks the process has crashed
 </REQUEST>

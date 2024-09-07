@@ -1,8 +1,8 @@
 Starting ProcessController (e2e) restart process test
 Testing: should be able to restart a running process over api
-Attempting to restart process with id: 8a32730c-c31c-4b62-9eb9-88fa09ebb0a3
+Attempting to restart process with id: 75023491-3152-4c10-bef0-a1192361bc17
 Restart process response: {
-  id: '8a32730c-c31c-4b62-9eb9-88fa09ebb0a3',
+  id: '75023491-3152-4c10-bef0-a1192361bc17',
   name: 'long-running-process',
   command: 'node -e "\n' +
     "    console.log('Long-running process started');\n" +
@@ -12,14 +12,14 @@ Restart process response: {
     '    }, 1000);\n' +
     '  "',
   status: 'running',
-  pid: 1449649,
+  pid: 1523850,
   restartAttempts: 1,
-  lastRestart: '2024-09-06T22:21:30.887Z',
+  lastRestart: '2024-09-07T00:17:44.158Z',
   cpu: 0,
-  memory: 52.546875,
+  memory: 52.4921875,
   maxMemory: 1024,
-  createdAt: '2024-09-06T22:20:56.000Z',
-  updatedAt: '2024-09-06T22:21:06.000Z',
+  createdAt: '2024-09-07T00:17:16.000Z',
+  updatedAt: '2024-09-07T00:17:26.000Z',
   _process: {
     _events: {},
     _eventsCount: 1,
@@ -30,7 +30,7 @@ Restart process response: {
     exitCode: null,
     killed: false,
     spawnfile: '/bin/sh',
-    _handle: { pid: 1449649 },
+    _handle: { pid: 1523850 },
     spawnargs: [
       '/bin/sh',
       '-c',
@@ -42,7 +42,7 @@ Restart process response: {
         '    }, 1000);\n' +
         '  "'
     ],
-    pid: 1449649,
+    pid: 1523850,
     stdin: null,
     stdout: {
       connecting: false,
